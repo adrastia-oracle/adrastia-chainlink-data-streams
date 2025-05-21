@@ -11,6 +11,7 @@ import {AdrastiaDataStreamsCommon} from "../common/AdrastiaDataStreamsCommon.sol
 import {IDataStreamsFeed} from "./IDataStreamsFeed.sol";
 import {IVerifierProxy} from "../vendor/IVerifierProxy.sol";
 import {IFeeManager} from "../vendor/IFeeManager.sol";
+import {Roles} from "../common/Roles.sol";
 
 /**
  * @title DataStreamsFeed
@@ -56,21 +57,6 @@ contract DataStreamsFeed is
          */
         uint32 expiresAt;
     }
-
-    /**
-     * @notice The role hash for the admin. Accounts with this role can manage the role and sub-roles.
-     */
-    bytes32 public constant ADMIN = keccak256("ADMIN_ROLE");
-
-    /**
-     * @notice The role hash for the report verifier. Accounts with this role can pass verified reports to the contract
-     * and update the latest report. Reports are expected to be verified by the report verifier before being passed to
-     * this contract.
-     *
-     * This role is not required when using the `verifyAndUpdateReport` function, as that function will verify the
-     * report before updating it.
-     */
-    bytes32 public constant REPORT_VERIFIER = keccak256("REPORT_VERIFIER_ROLE");
 
     /**
      * @notice The Chainlink verifier proxy contract.
@@ -169,25 +155,15 @@ contract DataStreamsFeed is
     error DuplicateReport();
 
     /**
-     * @notice Constructs a new DataStreamsFeed contract.
+     * @notice Constructs a new DataStreamsFeed contract, granting the ADMIN role to the creator of the contract.
      *
      * @param verifierProxy_ The address of the Chainlink verifier proxy contract.
-     * @param initialAdmin The address of the initial admin. This address will be granted the ADMIN role.
-     * @param initialReportVerifier The address of the initial report verifier. This address will be granted the
-     * REPORT_VERIFIER role. Use the zero address to not grant this role initially.
      * @param _feedId The ID of the feed. This is the same as the feedId in the report.
      * @param _decimals The number of decimals used in the feed. This is the same as the decimals used in the report.
      * @param _description The description of the feed.
      */
-    constructor(
-        address verifierProxy_,
-        address initialAdmin,
-        address initialReportVerifier,
-        bytes32 _feedId,
-        uint8 _decimals,
-        string memory _description
-    ) {
-        if (verifierProxy_ == address(0) || initialAdmin == address(0) || _feedId == bytes32(0)) {
+    constructor(address verifierProxy_, bytes32 _feedId, uint8 _decimals, string memory _description) {
+        if (verifierProxy_ == address(0) || _feedId == bytes32(0)) {
             // These are definitely invalid arguments
             revert InvalidConstructorArguments();
         }
@@ -199,7 +175,7 @@ contract DataStreamsFeed is
 
         latestReport = TruncatedReport(0, 0, 0);
 
-        _initializeRoles(initialAdmin, initialReportVerifier);
+        _initializeRoles(msg.sender);
     }
 
     /**
@@ -398,7 +374,7 @@ contract DataStreamsFeed is
     function updateReport(
         uint16 reportVersion,
         bytes calldata verifiedReportData
-    ) external virtual onlyRole(REPORT_VERIFIER) {
+    ) external virtual onlyRole(Roles.REPORT_VERIFIER) {
         _updateReport(reportVersion, verifiedReportData);
     }
 
@@ -433,8 +409,26 @@ contract DataStreamsFeed is
      * @param to The recipient address.
      * @param amount The amount to withdraw.
      */
-    function withdrawErc20(address token, address to, uint256 amount) external virtual onlyRole(ADMIN) {
+    function withdrawErc20(address token, address to, uint256 amount) external virtual onlyRole(Roles.ADMIN) {
         SafeERC20.safeTransfer(IERC20(token), to, amount);
+    }
+
+    /**
+     * @notice The hash of the ADMIN role.
+     *
+     * @return The hash of the ADMIN role.
+     */
+    function ADMIN() external pure returns (bytes32) {
+        return Roles.ADMIN;
+    }
+
+    /**
+     * @notice The hash of the REPORT_VERIFIER role.
+     *
+     * @return The hash of the REPORT_VERIFIER role.
+     */
+    function REPORT_VERIFIER() external pure returns (bytes32) {
+        return Roles.REPORT_VERIFIER;
     }
 
     /// @inheritdoc IERC165
@@ -568,18 +562,13 @@ contract DataStreamsFeed is
         );
     }
 
-    function _initializeRoles(address initialAdmin, address initialReportVerifier) internal virtual {
+    function _initializeRoles(address initialAdmin) internal virtual {
         // ADMIN self administer their role
-        _setRoleAdmin(ADMIN, ADMIN);
+        _setRoleAdmin(Roles.ADMIN, Roles.ADMIN);
         // ADMIN manages REPORT_VERIFIER
-        _setRoleAdmin(REPORT_VERIFIER, ADMIN);
+        _setRoleAdmin(Roles.REPORT_VERIFIER, Roles.ADMIN);
 
         // Grant ADMIN to the initial updater admin
-        _grantRole(ADMIN, initialAdmin);
-
-        if (initialReportVerifier != address(0)) {
-            // Grant REPORT_VERIFIER to the initial report verifier
-            _grantRole(REPORT_VERIFIER, initialReportVerifier);
-        }
+        _grantRole(Roles.ADMIN, initialAdmin);
     }
 }
