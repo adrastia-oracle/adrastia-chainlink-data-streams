@@ -5,4 +5,6 @@ interface IDataStreamsFeed {
     function feedId() external view returns (bytes32);
 
     function updateReport(uint16 reportVersion, bytes calldata verifiedReportData) external;
+
+    function verifyAndUpdateReport(bytes calldata unverifiedReportData, bytes calldata parameterPayload) external;
 }
