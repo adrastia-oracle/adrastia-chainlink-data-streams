@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {IVerifierProxy} from "../vendor/IVerifierProxy.sol";
+
 /**
  * @title IDataStreamsFeed
  * @author TRILEZ SOFTWARE INC. dba. Adrastia
@@ -9,6 +11,13 @@ pragma solidity ^0.8.0;
  * verified before updating the feed).
  */
 interface IDataStreamsFeed {
+    /**
+     * @notice Gets the address of the Chainlink Data Streams verifier proxy that's used to verify report data.
+     *
+     * @return The address of the verifier proxy contract.
+     */
+    function verifierProxy() external view returns (IVerifierProxy);
+
     /**
      * @notice Gets the Chainlink Data Streams feed ID.
      *

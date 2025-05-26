@@ -61,7 +61,7 @@ contract DataStreamsFeed is
     /**
      * @notice The Chainlink verifier proxy contract.
      */
-    IVerifierProxy public immutable verifierProxy;
+    IVerifierProxy public immutable override verifierProxy;
 
     /**
      * @notice The ID of the feed. This is the same as the feedId in the report.
