@@ -378,6 +378,7 @@ contract DataStreamsFeed is
         _updateReport(reportVersion, verifiedReportData);
     }
 
+    /// @inheritdoc IDataStreamsFeed
     function verifyAndUpdateReport(
         bytes calldata unverifiedReportData,
         bytes calldata parameterPayload
