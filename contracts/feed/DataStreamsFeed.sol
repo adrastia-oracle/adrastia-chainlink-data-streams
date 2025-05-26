@@ -374,7 +374,7 @@ contract DataStreamsFeed is
     function updateReport(
         uint16 reportVersion,
         bytes calldata verifiedReportData
-    ) external virtual onlyRole(Roles.REPORT_VERIFIER) {
+    ) external virtual override onlyRole(Roles.REPORT_VERIFIER) {
         _updateReport(reportVersion, verifiedReportData);
     }
 
@@ -382,7 +382,7 @@ contract DataStreamsFeed is
     function verifyAndUpdateReport(
         bytes calldata unverifiedReportData,
         bytes calldata parameterPayload
-    ) external virtual {
+    ) external virtual override {
         // Decode unverified report to extract report data
         (, bytes memory reportData) = abi.decode(unverifiedReportData, (bytes32[3], bytes));
 
