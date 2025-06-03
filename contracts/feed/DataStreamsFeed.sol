@@ -27,10 +27,13 @@ import {Roles} from "../common/Roles.sol";
  *     when using the `verifyAndUpdateReport` function, as that function will verify the report before updating it.
  *
  * This contract implements Chainlink's AggregatorV2V3Interface, allowing for easy integration with existing protocols.
- * All round IDs are the same as the report timestamps, and the latest report is always the most recent report. For
- * gas efficiency, this contract only stores the latest report in a single storage slot, and the rest of the reports are
- * not stored. Calling `getRoundData` will only work for the latest report, and will revert if the round ID does not
- * match the latest report timestamp.
+ * Round IDs start at 1 and increment with each report update, allowing for over a hundred years of unique round IDs.
+ *
+ * The functions `latestAnswer` and `latestRoundData` will revert if the latest report is expired or if there is no
+ * report. The functions `latestTimestamp` and `latestRound` do not revert if the latest report is expired to allow
+ * for introspection of the latest report data, even if it is expired. This is useful for anyone querying past rounds
+ * using `latestRound`. Functions that return report data for specific round IDs do not check for expiration, as they
+ * are expected to be used for historical data retrieval.
  */
 contract DataStreamsFeed is
     IDataStreamsFeed,
@@ -94,6 +97,11 @@ contract DataStreamsFeed is
      * @notice The latest report data.
      */
     TruncatedReport internal latestReport;
+
+    /**
+     * @notice A mapping of round IDs to historical reports.
+     */
+    mapping(uint32 => TruncatedReport) internal historicalReports;
 
     /**
      * @notice An event emitted when the latest report is updated.
@@ -228,64 +236,51 @@ contract DataStreamsFeed is
     }
 
     /**
-     * @notice Returns the latest timestamp, if available and not expired.
-     * @dev This function will revert if the latest report is expired or if there is no report.
+     * @notice Returns the latest timestamp, if available.
+     * @dev This function will revert if there's no report.
      *
-     * @return The latest report timestamp.
+     * @return The latest report timestamp (observation time).
      */
     function latestTimestamp() external view override returns (uint256) {
         TruncatedReport memory report = latestReport;
-        if (report.expiresAt <= block.timestamp) {
-            if (report.observationTimestamp == 0) {
-                revert MissingReport();
-            }
-
-            revert ReportIsExpired(report.expiresAt, uint32(block.timestamp));
+        if (report.observationTimestamp == 0) {
+            revert MissingReport();
         }
 
         return report.observationTimestamp;
     }
 
     /**
-     * @notice Returns the latest round ID, if available and not expired.
-     * @dev This function will revert if the latest report is expired or if there is no report.
+     * @notice Returns the latest round ID, if available.
+     * @dev This function will revert if there's no report.
      *
      * @return The latest report round ID.
      */
     function latestRound() external view override returns (uint256) {
         TruncatedReport memory report = latestReport;
-        if (report.expiresAt <= block.timestamp) {
-            if (report.observationTimestamp == 0) {
-                revert MissingReport();
-            }
-
-            revert ReportIsExpired(report.expiresAt, uint32(block.timestamp));
+        if (report.observationTimestamp == 0) {
+            revert MissingReport();
         }
 
         return report.roundId;
     }
 
     /**
-     * @notice Returns the latest price, if available and not expired, and if `roundId` matches the latest round ID
-     * (timestamp).
-     * @dev This function will revert if the latest report is expired, if there is no report, or if the round ID does
-     * not match the latest round ID.
+     * @notice Returns the report price for the specified round ID.
+     * @dev This function will revert if there is no report for the specified round ID.
      *
-     * @param roundId The round ID to check. This is the same as the timestamp of the report.
+     * @param roundId The round ID to check. Round IDs start at 1 and increment with each report update.
      *
-     * @return The latest report price.
+     * @return The price observed in the report.
      */
     function getAnswer(uint256 roundId) external view override returns (int256) {
-        TruncatedReport memory report = latestReport;
-        if (report.expiresAt <= block.timestamp) {
-            if (report.observationTimestamp == 0) {
-                revert MissingReport();
-            }
-
-            revert ReportIsExpired(report.expiresAt, uint32(block.timestamp));
+        if (roundId > type(uint32).max) {
+            // Round ID is too large to be valid
+            revert MissingReport();
         }
 
-        if (roundId != report.observationTimestamp) {
+        TruncatedReport memory report = historicalReports[uint32(roundId)];
+        if (report.observationTimestamp == 0) {
             revert MissingReport();
         }
 
@@ -293,24 +288,21 @@ contract DataStreamsFeed is
     }
 
     /**
-     * @notice Returns the latest timestamp, if available and not expired, and if `roundId` matches the latest round ID
-     * (timestamp).
-     * @dev This function will revert if the latest report is expired, if there is no report, or if the round ID does
-     * not match the latest round ID.
+     * @notice Returns the timestamp (observation time) of the report for the specified round ID.
+     * @dev This function will revert if there is no report for the specified round ID.
      *
-     * @param roundId The round ID to check. This is the same as the timestamp of the report.
+     * @param roundId The round ID to check. Round IDs start at 1 and increment with each report update.
+     *
+     * @return The timestamp of the report (observation time), in seconds since the Unix epoch.
      */
     function getTimestamp(uint256 roundId) external view override returns (uint256) {
-        TruncatedReport memory report = latestReport;
-        if (report.expiresAt <= block.timestamp) {
-            if (report.observationTimestamp == 0) {
-                revert MissingReport();
-            }
-
-            revert ReportIsExpired(report.expiresAt, uint32(block.timestamp));
+        if (roundId > type(uint32).max) {
+            // Round ID is too large to be valid
+            revert MissingReport();
         }
 
-        if (roundId != report.observationTimestamp) {
+        TruncatedReport memory report = historicalReports[uint32(roundId)];
+        if (report.observationTimestamp == 0) {
             revert MissingReport();
         }
 
@@ -318,18 +310,16 @@ contract DataStreamsFeed is
     }
 
     /**
-     * @notice Returns the latest report data, if available and not expired, and if `roundId` matches the latest round
-     * ID (timestamp).
-     * @dev This function will revert if the latest report is expired, if there is no report, or if the round ID does
-     * not match the latest round ID.
+     * @notice Returns the report data for the specified round ID, if any.
+     * @dev This function will revert if there is no report for the specified round ID.
      *
-     * @param _roundId The round ID to check. This is the same as the timestamp of the report.
+     * @param _roundId The round ID to check. Round IDs start at 1 and increment with each report update.
      *
-     * @return roundId The round ID of the report (timestamp).
-     * @return answer The price of the report.
+     * @return roundId The round ID of the report.
+     * @return answer The price observed in the report.
      * @return startedAt The timestamp of the report.
-     * @return updatedAt The timestamp of the report.
-     * @return answeredInRound The round ID of the report (timestamp).
+     * @return updatedAt The timestamp from when the report was stored.
+     * @return answeredInRound The round ID of the report.
      */
     function getRoundData(
         uint80 _roundId
@@ -339,16 +329,13 @@ contract DataStreamsFeed is
         override
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
-        TruncatedReport memory report = latestReport;
-        if (report.expiresAt <= block.timestamp) {
-            if (report.observationTimestamp == 0) {
-                revert MissingReport();
-            }
-
-            revert ReportIsExpired(report.expiresAt, uint32(block.timestamp));
+        if (_roundId > type(uint32).max) {
+            // Round ID is too large to be valid
+            revert MissingReport();
         }
 
-        if (_roundId != report.observationTimestamp) {
+        TruncatedReport memory report = historicalReports[uint32(_roundId)];
+        if (report.observationTimestamp == 0) {
             revert MissingReport();
         }
 
@@ -365,11 +352,11 @@ contract DataStreamsFeed is
      * @notice Returns the latest report data, if available and not expired.
      * @dev This function will revert if the latest report is expired or if there is no report.
      *
-     * @return roundId The round ID of the report (timestamp).
-     * @return answer The price of the report.
+     * @return roundId The round ID of the report.
+     * @return answer The price observed in the report.
      * @return startedAt The timestamp of the report.
-     * @return updatedAt The timestamp of the report.
-     * @return answeredInRound The round ID of the report (timestamp).
+     * @return updatedAt The timestamp from when the report was stored.
+     * @return answeredInRound The round ID of the report.
      */
     function latestRoundData()
         external
@@ -588,7 +575,7 @@ contract DataStreamsFeed is
 
         uint32 newRoundId = lastReport.roundId + 1;
 
-        latestReport = TruncatedReport({
+        historicalReports[newRoundId] = latestReport = TruncatedReport({
             price: reportPrice,
             observationTimestamp: reportTimestamp,
             expiresAt: reportExpiresAt,
