@@ -529,16 +529,6 @@ contract DataStreamsFeed is
 
         TruncatedReport memory lastReport = latestReport;
 
-        if (reportTimestamp < lastReport.timestamp) {
-            // The report is stale
-            revert StaleReport(lastReport.timestamp, reportTimestamp);
-        }
-
-        if (reportTimestamp == 0) {
-            // The report is invalid
-            revert InvalidReport();
-        }
-
         if (
             reportPrice == lastReport.price &&
             reportTimestamp == lastReport.timestamp &&
@@ -546,6 +536,16 @@ contract DataStreamsFeed is
         ) {
             // The report is a duplicate
             revert DuplicateReport();
+        }
+
+        if (reportTimestamp <= lastReport.timestamp) {
+            // The report is stale
+            revert StaleReport(lastReport.timestamp, reportTimestamp);
+        }
+
+        if (reportTimestamp == 0) {
+            // The report is invalid
+            revert InvalidReport();
         }
 
         latestReport = TruncatedReport({price: reportPrice, timestamp: reportTimestamp, expiresAt: reportExpiresAt});
