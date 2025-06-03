@@ -49,9 +49,9 @@ contract DataStreamsFeed is
          */
         int192 price;
         /**
-         * @notice The timestamp of the report, in seconds since the Unix epoch.
+         * @notice The timestamp of the report (observation time), in seconds since the Unix epoch.
          */
-        uint32 timestamp;
+        uint32 observationTimestamp;
         /**
          * @notice The timestamp at which the report expires, in seconds since the Unix epoch.
          */
@@ -146,13 +146,13 @@ contract DataStreamsFeed is
     /**
      * @notice An error thrown when, upon updating the report, the provided report is stale, compared to the latest
      * report.
-     * @param latestTimestamp The timestamp of the latest report.
-     * @param providedTimestamp The timestamp of the provided report.
+     * @param latestTimestamp The timestamp (observation time) of the latest report.
+     * @param providedTimestamp The timestamp (observation time) of the provided report.
      */
     error StaleReport(uint32 latestTimestamp, uint32 providedTimestamp);
 
     /**
-     * @notice An error thrown when, upon updating the report, the report has a timestamp of 0.
+     * @notice An error thrown when, upon updating the report, the report has a timestamp (observation time) of 0.
      */
     error InvalidReport();
 
@@ -203,7 +203,7 @@ contract DataStreamsFeed is
     function latestAnswer() external view override returns (int256) {
         TruncatedReport memory report = latestReport;
         if (report.expiresAt <= block.timestamp) {
-            if (report.timestamp == 0) {
+            if (report.observationTimestamp == 0) {
                 revert MissingReport();
             }
 
@@ -222,14 +222,14 @@ contract DataStreamsFeed is
     function latestTimestamp() external view override returns (uint256) {
         TruncatedReport memory report = latestReport;
         if (report.expiresAt <= block.timestamp) {
-            if (report.timestamp == 0) {
+            if (report.observationTimestamp == 0) {
                 revert MissingReport();
             }
 
             revert ReportIsExpired(report.expiresAt, uint32(block.timestamp));
         }
 
-        return report.timestamp;
+        return report.observationTimestamp;
     }
 
     /**
@@ -241,14 +241,14 @@ contract DataStreamsFeed is
     function latestRound() external view override returns (uint256) {
         TruncatedReport memory report = latestReport;
         if (report.expiresAt <= block.timestamp) {
-            if (report.timestamp == 0) {
+            if (report.observationTimestamp == 0) {
                 revert MissingReport();
             }
 
             revert ReportIsExpired(report.expiresAt, uint32(block.timestamp));
         }
 
-        return report.timestamp;
+        return report.observationTimestamp;
     }
 
     /**
@@ -264,14 +264,14 @@ contract DataStreamsFeed is
     function getAnswer(uint256 roundId) external view override returns (int256) {
         TruncatedReport memory report = latestReport;
         if (report.expiresAt <= block.timestamp) {
-            if (report.timestamp == 0) {
+            if (report.observationTimestamp == 0) {
                 revert MissingReport();
             }
 
             revert ReportIsExpired(report.expiresAt, uint32(block.timestamp));
         }
 
-        if (roundId != report.timestamp) {
+        if (roundId != report.observationTimestamp) {
             revert MissingReport();
         }
 
@@ -289,18 +289,18 @@ contract DataStreamsFeed is
     function getTimestamp(uint256 roundId) external view override returns (uint256) {
         TruncatedReport memory report = latestReport;
         if (report.expiresAt <= block.timestamp) {
-            if (report.timestamp == 0) {
+            if (report.observationTimestamp == 0) {
                 revert MissingReport();
             }
 
             revert ReportIsExpired(report.expiresAt, uint32(block.timestamp));
         }
 
-        if (roundId != report.timestamp) {
+        if (roundId != report.observationTimestamp) {
             revert MissingReport();
         }
 
-        return report.timestamp;
+        return report.observationTimestamp;
     }
 
     /**
@@ -327,18 +327,24 @@ contract DataStreamsFeed is
     {
         TruncatedReport memory report = latestReport;
         if (report.expiresAt <= block.timestamp) {
-            if (report.timestamp == 0) {
+            if (report.observationTimestamp == 0) {
                 revert MissingReport();
             }
 
             revert ReportIsExpired(report.expiresAt, uint32(block.timestamp));
         }
 
-        if (_roundId != report.timestamp) {
+        if (_roundId != report.observationTimestamp) {
             revert MissingReport();
         }
 
-        return (report.timestamp, report.price, report.timestamp, report.timestamp, report.timestamp);
+        return (
+            report.observationTimestamp,
+            report.price,
+            report.observationTimestamp,
+            report.observationTimestamp,
+            report.observationTimestamp
+        );
     }
 
     /**
@@ -359,14 +365,20 @@ contract DataStreamsFeed is
     {
         TruncatedReport memory report = latestReport;
         if (report.expiresAt <= block.timestamp) {
-            if (report.timestamp == 0) {
+            if (report.observationTimestamp == 0) {
                 revert MissingReport();
             }
 
             revert ReportIsExpired(report.expiresAt, uint32(block.timestamp));
         }
 
-        return (report.timestamp, report.price, report.timestamp, report.timestamp, report.timestamp);
+        return (
+            report.observationTimestamp,
+            report.price,
+            report.observationTimestamp,
+            report.observationTimestamp,
+            report.observationTimestamp
+        );
     }
 
     /**
@@ -543,16 +555,16 @@ contract DataStreamsFeed is
 
         if (
             reportPrice == lastReport.price &&
-            reportTimestamp == lastReport.timestamp &&
+            reportTimestamp == lastReport.observationTimestamp &&
             reportExpiresAt == lastReport.expiresAt
         ) {
             // The report is a duplicate
             revert DuplicateReport();
         }
 
-        if (reportTimestamp <= lastReport.timestamp) {
+        if (reportTimestamp <= lastReport.observationTimestamp) {
             // The report is stale
-            revert StaleReport(lastReport.timestamp, reportTimestamp);
+            revert StaleReport(lastReport.observationTimestamp, reportTimestamp);
         }
 
         if (reportTimestamp == 0) {
@@ -560,7 +572,11 @@ contract DataStreamsFeed is
             revert InvalidReport();
         }
 
-        latestReport = TruncatedReport({price: reportPrice, timestamp: reportTimestamp, expiresAt: reportExpiresAt});
+        latestReport = TruncatedReport({
+            price: reportPrice,
+            observationTimestamp: reportTimestamp,
+            expiresAt: reportExpiresAt
+        });
 
         emit AnswerUpdated(reportPrice, reportTimestamp, block.timestamp);
 
