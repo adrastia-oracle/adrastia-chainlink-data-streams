@@ -40,10 +40,11 @@ contract DataStreamsFeed is
     AccessControlEnumerable
 {
     /**
-     * @notice The report data structure. This is a truncated version of the full report data to only occupy one storage
-     * slot.
+     * @notice The report data structure. This is a truncated version of the full report data to only occupy two storage
+     * slots.
      */
     struct TruncatedReport {
+        // SLOT 1
         /**
          * @notice The price of the report. This is a signed integer, as prices can be negative.
          */
@@ -56,6 +57,11 @@ contract DataStreamsFeed is
          * @notice The timestamp at which the report expires, in seconds since the Unix epoch.
          */
         uint32 expiresAt;
+        // SLOT 2
+        /**
+         * @notice The timestamp at which the report was stored, in seconds since the Unix epoch.
+         */
+        uint32 storageTimestamp;
     }
 
     /**
@@ -180,7 +186,7 @@ contract DataStreamsFeed is
         decimals = _decimals;
         description = _description;
 
-        latestReport = TruncatedReport(0, 0, 0);
+        latestReport = TruncatedReport(0, 0, 0, 0);
 
         _initializeRoles(msg.sender);
     }
@@ -339,11 +345,11 @@ contract DataStreamsFeed is
         }
 
         return (
-            report.observationTimestamp,
-            report.price,
-            report.observationTimestamp,
-            report.observationTimestamp,
-            report.observationTimestamp
+            report.observationTimestamp, // roundId
+            report.price, // answer
+            report.observationTimestamp, // startedAt
+            report.storageTimestamp, // updatedAt
+            report.observationTimestamp // answeredInRound
         );
     }
 
@@ -373,11 +379,11 @@ contract DataStreamsFeed is
         }
 
         return (
-            report.observationTimestamp,
-            report.price,
-            report.observationTimestamp,
-            report.observationTimestamp,
-            report.observationTimestamp
+            report.observationTimestamp, // roundId
+            report.price, // answer
+            report.observationTimestamp, // startedAt
+            report.storageTimestamp, // updatedAt
+            report.observationTimestamp // answeredInRound
         );
     }
 
@@ -575,7 +581,8 @@ contract DataStreamsFeed is
         latestReport = TruncatedReport({
             price: reportPrice,
             observationTimestamp: reportTimestamp,
-            expiresAt: reportExpiresAt
+            expiresAt: reportExpiresAt,
+            storageTimestamp: uint32(block.timestamp)
         });
 
         emit AnswerUpdated(reportPrice, reportTimestamp, block.timestamp);
