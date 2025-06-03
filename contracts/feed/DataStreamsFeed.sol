@@ -12,6 +12,7 @@ import {IDataStreamsFeed} from "./IDataStreamsFeed.sol";
 import {IVerifierProxy} from "../vendor/IVerifierProxy.sol";
 import {IFeeManager} from "../vendor/IFeeManager.sol";
 import {Roles} from "../common/Roles.sol";
+import {IDataStreamsUpdateHook} from "./IDataStreamsUpdateHook.sol";
 
 /**
  * @title DataStreamsFeed
@@ -21,10 +22,13 @@ import {Roles} from "../common/Roles.sol";
  *
  * Access is controlled using OpenZeppelin's AccessControlEnumerable, allowing for fine-grained permissions.
  * The roles are setup as follows:
- * - ADMIN: Can manage the role and sub-roles.
+ * - ADMIN: Can manage the role and sub-roles. Cam witjdraw ERC20 tokens from the contract. Can set the update
+ *  hook configuration.
  *   - REPORT_VERIFIER: Can call `updateReport` to update the latest report data. Ideally, accounts with this role
  *     should be the Adrastia Data Streams Updater contract that verifies reports in bulk. This role is not required
  *     when using the `verifyAndUpdateReport` function, as that function will verify the report before updating it.
+ *   - UPDATE_PAUSE_ADMIN: Can pause and unpause the update functionality of the contract. This is useful for emergency
+ *     situations or maintenance.
  *
  * This contract implements Chainlink's AggregatorV2V3Interface, allowing for easy integration with existing protocols.
  * Round IDs start at 1 and increment with each report update, allowing for over a hundred years of unique round IDs.
@@ -34,6 +38,13 @@ import {Roles} from "../common/Roles.sol";
  * for introspection of the latest report data, even if it is expired. This is useful for anyone querying past rounds
  * using `latestRound`. Functions that return report data for specific round IDs do not check for expiration, as they
  * are expected to be used for historical data retrieval.
+ *
+ * Updates to the feed can be paused using the `setPaused` function, which can only be called by accounts with the
+ * UPDATE_PAUSE_ADMIN role. This is useful for emergency situations or maintenance.
+ *
+ * The `setUpdateHook` function allows for setting a post-update hook that is called after a report is updated.
+ * The hook can be used to trigger additional actions after a report is updated. Note that reentrancy by hooks is
+ * allowed, but unless subsequent update calls provide a more recent report, such subsequent calls will revert.
  */
 contract DataStreamsFeed is
     IDataStreamsFeed,
@@ -74,6 +85,47 @@ contract DataStreamsFeed is
     }
 
     /**
+     * @notice The update hook configuration. This is used to store the post-update hook configuration.
+     *
+     * @dev The hook is called after a report is updated, allowing for additional actions to be taken.
+     */
+    struct UpdateHook {
+        /**
+         * @notice A flag indicating whether the post-update hook is allowed to fail. If true, the post-update hook can
+         * fail without reverting the transaction.
+         */
+        bool allowHookFailure;
+        /**
+         * @notice The gas limit for the post-update hook. This is used to ensure that the hook does not consume too
+         * much gas and cause the transaction unintentially to fail.
+         *
+         * @dev This is a uint64 to save on storage costs, as the gas limit is typically a small number.
+         */
+        uint64 hookGasLimit;
+        /**
+         * @notice The address of the post-update hook. This is called after a report is updated. The zero address
+         * indicates that no post-update hook is set.
+         *
+         * @dev This can be used to trigger additional actions after a report is updated.
+         */
+        IDataStreamsUpdateHook hookAddress;
+    }
+
+    /**
+     * @notice A struct to store pause status and update hook configuration.
+     */
+    struct ConfigAndState {
+        /**
+         * @notice A flag indicating whether updates to the feed are paused. If true, no new reports can be written.
+         */
+        bool updatesPaused;
+        /**
+         * @notice The update hook config, if any.
+         */
+        UpdateHook updateHook;
+    }
+
+    /**
      * @notice The Chainlink verifier proxy contract.
      */
     IVerifierProxy public immutable override verifierProxy;
@@ -97,6 +149,13 @@ contract DataStreamsFeed is
      * @notice The latest report data.
      */
     TruncatedReport internal latestReport;
+
+    /**
+     * @notice The configuration and state of the feed.
+     *
+     * @dev This is used to store the updatesPaused flag and the updateHook address.
+     */
+    ConfigAndState internal configAndState;
 
     /**
      * @notice A mapping of round IDs to historical reports.
@@ -125,6 +184,34 @@ contract DataStreamsFeed is
         uint32 expiresAt,
         uint32 timestamp
     );
+
+    /**
+     * @notice An event emitted when the post update hook reverts, but the failure is allowed.
+     *
+     * @param hook The address of the post update hook that failed.
+     * @param reason The reason for the failure, encoded as bytes.
+     * @param timestamp The block timestamp at which the hook failed, in seconds since the Unix epoch.
+     */
+    event PostUpdateHookFailed(address indexed hook, bytes reason, uint256 timestamp);
+
+    /**
+     * @notice An event emitted when the update pause status is changed.
+     *
+     * @param caller The address of the account that changed the pause status.
+     * @param paused True if updates are paused, false otherwise.
+     * @param timestamp The block timestamp at which the pause status was changed, in seconds since the Unix epoch.
+     */
+    event PauseStatusChanged(address indexed caller, bool paused, uint256 timestamp);
+
+    /**
+     * @notice An event emitted when the update hook is changed.
+     *
+     * @param caller The address of the account that changed the update hook.
+     * @param oldHook The old update hook config.
+     * @param newHook The new update hook config.
+     * @param timestamp The block timestamp at which the update hook was changed, in seconds since the Unix epoch.
+     */
+    event UpdateHookChanged(address indexed caller, UpdateHook oldHook, UpdateHook newHook, uint256 timestamp);
 
     /**
      * @notice An errror thrown passing invalid constructor arguments.
@@ -184,6 +271,32 @@ contract DataStreamsFeed is
     error DuplicateReport();
 
     /**
+     * @notice An error thrown when attempting to update the report, but updates are paused.
+     */
+    error UpdatesPaused();
+
+    /**
+     * @notice An error thrown when the post update hook fails to execute.
+     * @param reason The reason for the failure, encoded as bytes.
+     */
+    error PostUpdateHookFailedError(bytes reason);
+
+    /**
+     * @notice An error thrown when attempting to set the paused status of the feed, but the status did not change.
+     */
+    error PauseStatusNotChanged();
+
+    /**
+     * @notice An error thrown when attempting to set the update hook, but the hook did not change.
+     */
+    error UpdateHookNotChanged();
+
+    /**
+     * @notice An error thrown when the update hook configuration is invalid.
+     */
+    error InvalidUpdateHookConfig();
+
+    /**
      * @notice Constructs a new DataStreamsFeed contract, granting the ADMIN role to the creator of the contract.
      *
      * @param verifierProxy_ The address of the Chainlink verifier proxy contract.
@@ -203,8 +316,118 @@ contract DataStreamsFeed is
         description = _description;
 
         latestReport = TruncatedReport(0, 0, 0, 0, 0);
+        configAndState = ConfigAndState({
+            updatesPaused: false,
+            updateHook: UpdateHook({
+                allowHookFailure: false,
+                hookGasLimit: 0,
+                hookAddress: IDataStreamsUpdateHook(address(0))
+            })
+        });
 
         _initializeRoles(msg.sender);
+    }
+
+    /**
+     * @notice Determines whether updates to the feed are paused.
+     *
+     * @return True if updates are paused, false otherwise.
+     */
+    function paused() external view returns (bool) {
+        return configAndState.updatesPaused;
+    }
+
+    /**
+     * @notice Sets whether updates to the feed are paused.
+     * @dev This function can only be called by accounts with the UPDATE_PAUSE_ADMIN role.
+     *
+     * @param paused_  True to pause updates, false to allow updates.
+     */
+    function setPaused(bool paused_) external onlyRole(Roles.UPDATE_PAUSE_ADMIN) {
+        ConfigAndState storage _configAndState = configAndState;
+        if (_configAndState.updatesPaused == paused_) {
+            // The pause status did not change. Revert to help the user be aware of this.
+            revert PauseStatusNotChanged();
+        }
+
+        configAndState.updatesPaused = paused_;
+
+        emit PauseStatusChanged(msg.sender, paused_, block.timestamp);
+    }
+
+    /**
+     * @notice Gets the config for the update hook, if any. A zero address for the hookAddress indicates that
+     * no update hook is set.
+     *
+     * @return allowHookFailure A flag indicating whether the post-update hook is allowed to fail.
+     * @return hookGasLimit The gas limit for the post-update hook.
+     * @return hookAddress The address of the post-update hook. A zero address indicates that no hook is set.
+     */
+    function getUpdateHook()
+        external
+        view
+        returns (bool allowHookFailure, uint64 hookGasLimit, IDataStreamsUpdateHook hookAddress)
+    {
+        UpdateHook memory updateHook = configAndState.updateHook;
+
+        return (updateHook.allowHookFailure, updateHook.hookGasLimit, updateHook.hookAddress);
+    }
+
+    /**
+     * @notice Sets the update hook configuration. This allows for setting a post-update hook that is called after a
+     * report is updated.
+     *
+     * If the hookAddress is set to the zero address, it indicates that no post-update hook is set. In that case,
+     * hookGasLimit must be 0 and allowHookFailure must be false to prevent accidental misconfiguration.
+     *
+     * If the hookAddress is set to a non-zero address, hookGasLimit must be non-zero to prevent accidental
+     * misconfiguration.
+     *
+     * @dev This function can only be called by accounts with the ADMIN role.
+     *
+     * @param allowHookFailure A flag indicating whether the post-update hook is allowed to fail. If true, the hook can
+     * fail without reverting the transaction.
+     * @param hookGasLimit The gas limit for the post-update hook. This is used to ensure that the hook does not consume
+     * too much gas and cause the transaction unintentionally to fail.
+     * @param hookAddress The address of the post-update hook. This is called after a report is updated. The zero
+     * address indicates that no post-update hook is set.
+     */
+    function setUpdateHook(
+        bool allowHookFailure,
+        uint64 hookGasLimit,
+        IDataStreamsUpdateHook hookAddress
+    ) external onlyRole(Roles.ADMIN) {
+        UpdateHook memory oldHook = configAndState.updateHook;
+
+        if (
+            oldHook.allowHookFailure == allowHookFailure &&
+            oldHook.hookGasLimit == hookGasLimit &&
+            oldHook.hookAddress == hookAddress
+        ) {
+            // The update hook did not change. Revert to help the user be aware of this.
+            revert UpdateHookNotChanged();
+        }
+
+        if (address(hookAddress) == address(0)) {
+            // hookGasLimit must be 0 and allowHookFailure must be false if the hookAddress is zero
+            // This is to prevent accidental misconfiguration
+            if (hookGasLimit != 0 || allowHookFailure) {
+                revert InvalidUpdateHookConfig();
+            }
+        } else {
+            // We have an update hook. Ensure that hookGasLimit is not zero. If so, it's likely a misconfiguration.
+            if (hookGasLimit == 0) {
+                revert InvalidUpdateHookConfig();
+            }
+        }
+
+        configAndState.updateHook = UpdateHook({
+            allowHookFailure: allowHookFailure,
+            hookGasLimit: hookGasLimit,
+            hookAddress: hookAddress
+        });
+
+        emit UpdateHookChanged(msg.sender, oldHook, configAndState.updateHook, block.timestamp);
     }
 
     /**
@@ -452,6 +675,15 @@ contract DataStreamsFeed is
         return Roles.REPORT_VERIFIER;
     }
 
+    /**
+     * @notice The hash of the UPDATE_PAUSE_ADMIN role.
+     *
+     * @return The hash of the UPDATE_PAUSE_ADMIN role.
+     */
+    function UPDATE_PAUSE_ADMIN() external pure returns (bytes32) {
+        return Roles.UPDATE_PAUSE_ADMIN;
+    }
+
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceID) public view virtual override returns (bool) {
         return
@@ -494,6 +726,11 @@ contract DataStreamsFeed is
      * @param verifiedReportData The verified report data, generated by the verifier proxy.
      */
     function _updateReport(uint16 reportVersion, bytes memory verifiedReportData) internal virtual {
+        ConfigAndState memory config = configAndState;
+        if (config.updatesPaused) {
+            revert UpdatesPaused();
+        }
+
         bytes32 reportFeedId;
         int192 reportPrice;
         uint32 reportValidFromTimestamp;
@@ -595,6 +832,32 @@ contract DataStreamsFeed is
             reportExpiresAt,
             uint32(block.timestamp)
         );
+
+        // Call the post-update hook, if set
+        address postUpdateHook = address(config.updateHook.hookAddress);
+        if (postUpdateHook != address(0)) {
+            (bool success, bytes memory returnData) = postUpdateHook.call{gas: config.updateHook.hookGasLimit}(
+                abi.encodeWithSelector(
+                    IDataStreamsUpdateHook.onReportUpdated.selector,
+                    feedId,
+                    newRoundId,
+                    reportPrice,
+                    reportTimestamp,
+                    reportExpiresAt,
+                    uint32(block.timestamp)
+                )
+            );
+
+            if (!success) {
+                if (config.updateHook.allowHookFailure) {
+                    // The hook failed, but we allow it to fail
+                    emit PostUpdateHookFailed(postUpdateHook, returnData, block.timestamp);
+                } else {
+                    // The hook failed, and we do not allow it to fail
+                    revert PostUpdateHookFailedError(returnData);
+                }
+            }
+        }
     }
 
     function _initializeRoles(address initialAdmin) internal virtual {
@@ -602,6 +865,8 @@ contract DataStreamsFeed is
         _setRoleAdmin(Roles.ADMIN, Roles.ADMIN);
         // ADMIN manages REPORT_VERIFIER
         _setRoleAdmin(Roles.REPORT_VERIFIER, Roles.ADMIN);
+        // ADMIN manages UPDATE_PAUSE_ADMIN
+        _setRoleAdmin(Roles.UPDATE_PAUSE_ADMIN, Roles.ADMIN);
 
         // Grant ADMIN to the initial updater admin
         _grantRole(Roles.ADMIN, initialAdmin);

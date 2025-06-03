@@ -16,4 +16,10 @@ library Roles {
      * report before updating it.
      */
     bytes32 public constant REPORT_VERIFIER = keccak256("REPORT_VERIFIER_ROLE");
+
+    /**
+     * @notice The role hash for the update pause admin. Accounts with this role can pause and unpause the update
+     * functionality of the contract. This is useful for emergency situations or maintenance.
+     */
+    bytes32 public constant UPDATE_PAUSE_ADMIN = keccak256("UPDATE_PAUSE_ADMIN_ROLE");
 }
