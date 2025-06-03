@@ -137,6 +137,13 @@ contract DataStreamsFeed is
     error ReportIsNotValidYet(uint32 validFromTimestamp, uint32 currentTimestamp);
 
     /**
+     * @notice An error thrown when the report's observation timestamp is in the future.
+     * @param observationTimestamp The timestamp of the report's observation.
+     * @param currentTimestamp The current timestamp.
+     */
+    error ReportObservationTimeInFuture(uint32 observationTimestamp, uint32 currentTimestamp);
+
+    /**
      * @notice An error thrown when, upon updating the report, the provided report is stale, compared to the latest
      * report.
      * @param latestTimestamp The timestamp of the latest report.
@@ -525,6 +532,11 @@ contract DataStreamsFeed is
         if (block.timestamp < reportValidFromTimestamp) {
             // The report is not yet valid
             revert ReportIsNotValidYet(reportValidFromTimestamp, uint32(block.timestamp));
+        }
+
+        if (block.timestamp < reportTimestamp) {
+            // The report timestamp is in the future
+            revert ReportObservationTimeInFuture(reportTimestamp, uint32(block.timestamp));
         }
 
         TruncatedReport memory lastReport = latestReport;
