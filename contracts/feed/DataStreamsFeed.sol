@@ -62,6 +62,12 @@ contract DataStreamsFeed is
          * @notice The timestamp at which the report was stored, in seconds since the Unix epoch.
          */
         uint32 storageTimestamp;
+        /**
+         * @notice The round ID of the report. Starts at 1 and increments with each report update.
+         *
+         * @dev Only 1 report can be comitted every second, so this allows for over a hundred years of unique round IDs.
+         */
+        uint32 roundId;
     }
 
     /**
@@ -94,6 +100,7 @@ contract DataStreamsFeed is
      *
      * @param feedId The ID of the feed. This is the same as the feedId in the report.
      * @param updater The address of the account updating the report.
+     * @param roundId The round ID of the report. Starts at 1 and increments with each report update.
      * @param price The price of the report. This is a signed integer, as prices can be negative.
      * @param validFromTimestamp The timestamp at which the report becomes valid, in seconds since the Unix epoch.
      * @param observationsTimestamp The timestamp of the report, in seconds since the Unix epoch.
@@ -103,6 +110,7 @@ contract DataStreamsFeed is
     event ReportUpdated(
         bytes32 indexed feedId,
         address indexed updater,
+        uint32 roundId,
         int192 price,
         uint32 validFromTimestamp,
         uint32 observationsTimestamp,
@@ -186,7 +194,7 @@ contract DataStreamsFeed is
         decimals = _decimals;
         description = _description;
 
-        latestReport = TruncatedReport(0, 0, 0, 0);
+        latestReport = TruncatedReport(0, 0, 0, 0, 0);
 
         _initializeRoles(msg.sender);
     }
@@ -239,10 +247,10 @@ contract DataStreamsFeed is
     }
 
     /**
-     * @notice Returns the latest timestamp, if available and not expired.
+     * @notice Returns the latest round ID, if available and not expired.
      * @dev This function will revert if the latest report is expired or if there is no report.
      *
-     * @return The latest report timestamp.
+     * @return The latest report round ID.
      */
     function latestRound() external view override returns (uint256) {
         TruncatedReport memory report = latestReport;
@@ -254,7 +262,7 @@ contract DataStreamsFeed is
             revert ReportIsExpired(report.expiresAt, uint32(block.timestamp));
         }
 
-        return report.observationTimestamp;
+        return report.roundId;
     }
 
     /**
@@ -345,11 +353,11 @@ contract DataStreamsFeed is
         }
 
         return (
-            report.observationTimestamp, // roundId
+            report.roundId, // roundId
             report.price, // answer
             report.observationTimestamp, // startedAt
             report.storageTimestamp, // updatedAt
-            report.observationTimestamp // answeredInRound
+            report.roundId // answeredInRound
         );
     }
 
@@ -379,11 +387,11 @@ contract DataStreamsFeed is
         }
 
         return (
-            report.observationTimestamp, // roundId
+            report.roundId, // roundId
             report.price, // answer
             report.observationTimestamp, // startedAt
             report.storageTimestamp, // updatedAt
-            report.observationTimestamp // answeredInRound
+            report.roundId // answeredInRound
         );
     }
 
@@ -578,11 +586,14 @@ contract DataStreamsFeed is
             revert InvalidReport();
         }
 
+        uint32 newRoundId = lastReport.roundId + 1;
+
         latestReport = TruncatedReport({
             price: reportPrice,
             observationTimestamp: reportTimestamp,
             expiresAt: reportExpiresAt,
-            storageTimestamp: uint32(block.timestamp)
+            storageTimestamp: uint32(block.timestamp),
+            roundId: newRoundId
         });
 
         emit AnswerUpdated(reportPrice, reportTimestamp, block.timestamp);
@@ -590,6 +601,7 @@ contract DataStreamsFeed is
         emit ReportUpdated(
             reportFeedId,
             msg.sender,
+            newRoundId,
             reportPrice,
             reportValidFromTimestamp,
             reportTimestamp,
