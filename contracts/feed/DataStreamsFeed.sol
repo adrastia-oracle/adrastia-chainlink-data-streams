@@ -333,7 +333,7 @@ contract DataStreamsFeed is
      *
      * @return True if updates are paused, false otherwise.
      */
-    function paused() external view returns (bool) {
+    function paused() external view virtual returns (bool) {
         return configAndState.updatesPaused;
     }
 
@@ -343,7 +343,7 @@ contract DataStreamsFeed is
      *
      * @param paused_  True to pause updates, false to allow updates.
      */
-    function setPaused(bool paused_) external onlyRole(Roles.UPDATE_PAUSE_ADMIN) {
+    function setPaused(bool paused_) external virtual onlyRole(Roles.UPDATE_PAUSE_ADMIN) {
         ConfigAndState storage _configAndState = configAndState;
         if (_configAndState.updatesPaused == paused_) {
             // The pause status did not change. Revert to help the user be aware of this.
@@ -366,6 +366,7 @@ contract DataStreamsFeed is
     function getUpdateHook()
         external
         view
+        virtual
         returns (bool allowHookFailure, uint64 hookGasLimit, IDataStreamsUpdateHook hookAddress)
     {
         UpdateHook memory updateHook = configAndState.updateHook;
@@ -396,7 +397,7 @@ contract DataStreamsFeed is
         bool allowHookFailure,
         uint64 hookGasLimit,
         IDataStreamsUpdateHook hookAddress
-    ) external onlyRole(Roles.ADMIN) {
+    ) external virtual onlyRole(Roles.ADMIN) {
         UpdateHook memory oldHook = configAndState.updateHook;
 
         if (
@@ -435,7 +436,7 @@ contract DataStreamsFeed is
      *
      * @return The version of the contract.
      */
-    function version() external pure override returns (uint256) {
+    function version() external pure virtual override returns (uint256) {
         return 1;
     }
 
@@ -445,7 +446,7 @@ contract DataStreamsFeed is
      *
      * @return The latest report price.
      */
-    function latestAnswer() external view override returns (int256) {
+    function latestAnswer() external view virtual override returns (int256) {
         TruncatedReport memory report = latestReport;
         if (report.expiresAt <= block.timestamp) {
             if (report.observationTimestamp == 0) {
@@ -464,7 +465,7 @@ contract DataStreamsFeed is
      *
      * @return The latest report timestamp (observation time).
      */
-    function latestTimestamp() external view override returns (uint256) {
+    function latestTimestamp() external view virtual override returns (uint256) {
         TruncatedReport memory report = latestReport;
         if (report.observationTimestamp == 0) {
             revert MissingReport();
@@ -479,7 +480,7 @@ contract DataStreamsFeed is
      *
      * @return The latest report round ID.
      */
-    function latestRound() external view override returns (uint256) {
+    function latestRound() external view virtual override returns (uint256) {
         TruncatedReport memory report = latestReport;
         if (report.observationTimestamp == 0) {
             revert MissingReport();
@@ -496,7 +497,7 @@ contract DataStreamsFeed is
      *
      * @return The price observed in the report.
      */
-    function getAnswer(uint256 roundId) external view override returns (int256) {
+    function getAnswer(uint256 roundId) external view virtual override returns (int256) {
         if (roundId > type(uint32).max) {
             // Round ID is too large to be valid
             revert MissingReport();
@@ -518,7 +519,7 @@ contract DataStreamsFeed is
      *
      * @return The timestamp of the report (observation time), in seconds since the Unix epoch.
      */
-    function getTimestamp(uint256 roundId) external view override returns (uint256) {
+    function getTimestamp(uint256 roundId) external view virtual override returns (uint256) {
         if (roundId > type(uint32).max) {
             // Round ID is too large to be valid
             revert MissingReport();
@@ -549,6 +550,7 @@ contract DataStreamsFeed is
     )
         external
         view
+        virtual
         override
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
@@ -584,6 +586,7 @@ contract DataStreamsFeed is
     function latestRoundData()
         external
         view
+        virtual
         override
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {

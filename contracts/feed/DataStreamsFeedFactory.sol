@@ -46,7 +46,11 @@ contract DataStreamsFeedFactory {
      *
      * @return addr The address of the newly created DataStreamsFeed contract.
      */
-    function createFeed(bytes32 feedId, uint8 decimals, string memory description) external returns (address addr) {
+    function createFeed(
+        bytes32 feedId,
+        uint8 decimals,
+        string memory description
+    ) external virtual returns (address addr) {
         return createFeed(hex"", feedId, decimals, description, msg.sender, address(0));
     }
 
@@ -69,7 +73,7 @@ contract DataStreamsFeedFactory {
         string memory description,
         address admin,
         address updater
-    ) external returns (address addr) {
+    ) external virtual returns (address addr) {
         return createFeed(hex"", feedId, decimals, description, admin, updater);
     }
 
@@ -95,7 +99,7 @@ contract DataStreamsFeedFactory {
         string memory description,
         address admin,
         address updater
-    ) public returns (address feedAddress) {
+    ) public virtual returns (address feedAddress) {
         require(admin != address(0), "Admin address cannot be zero");
 
         bytes memory bytecode = getBytecode(feedId, decimals, description);
@@ -145,7 +149,7 @@ contract DataStreamsFeedFactory {
         bytes32 feedId,
         uint8 decimals,
         string memory description
-    ) external view returns (address) {
+    ) external view virtual returns (address) {
         bytes memory bytecode = getBytecode(feedId, decimals, description);
         bytes32 finalSalt = keccak256(abi.encodePacked(creator, userSalt, feedId, decimals, description));
 
@@ -156,7 +160,7 @@ contract DataStreamsFeedFactory {
         bytes32 feedId,
         uint8 decimals,
         string memory description
-    ) internal view returns (bytes memory) {
+    ) internal view virtual returns (bytes memory) {
         return
             abi.encodePacked(
                 type(DataStreamsFeed).creationCode,
@@ -164,7 +168,7 @@ contract DataStreamsFeedFactory {
             );
     }
 
-    function computeAddress(bytes32 salt, bytes memory bytecode) internal view returns (address) {
+    function computeAddress(bytes32 salt, bytes memory bytecode) internal view virtual returns (address) {
         bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, keccak256(bytecode)));
 
         return address(uint160(uint256(hash)));
