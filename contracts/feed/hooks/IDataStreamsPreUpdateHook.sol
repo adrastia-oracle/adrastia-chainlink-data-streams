@@ -2,15 +2,15 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title IDataStreamsUpdateHook
+ * @title IDataStreamsPreUpdateHook
  * @author Tyler Loewen, TRILEZ SOFTWARE INC. dba. Adrastia
- * @notice An interface for a hook that is called when a Chainlink Data Streams feed report is updated.
- * This interface allows for custom logic to be executed whenever a report is updated, such as logging, triggering
+ * @notice An interface for a hook that is called immediately before a Chainlink Data Streams feed report is updated.
+ * This interface allows for custom logic to be executed before a report is updated, such as logging, triggering
  * events, or interacting with other contracts.
  */
-interface IDataStreamsUpdateHook {
+interface IDataStreamsPreUpdateHook {
     /**
-     * @notice Called after a report is updated in the Chainlink Data Streams feed.
+     * @notice Called immediately before a report is updated in the Chainlink Data Streams feed.
      *
      * @param feedId The bytes32 ID of the feed that was updated.
      * @param roundId The round ID of the report that was updated.
@@ -19,7 +19,7 @@ interface IDataStreamsUpdateHook {
      * @param expiresAt The timestamp when the report expires.
      * @param updatedAt The timestamp when the report was last updated.
      */
-    function onReportUpdated(
+    function onPreReportUpdate(
         bytes32 feedId,
         uint32 roundId,
         int192 price,
