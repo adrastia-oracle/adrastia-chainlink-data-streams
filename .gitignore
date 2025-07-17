@@ -21,3 +21,8 @@ ignition/deployments/chain-31337
 
 # Temporary files
 *.tmp
+
+# Forge files
+/cache_forge
+/out
+/lib
