@@ -9,6 +9,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {AggregatorV2V3Interface} from "../vendor/AggregatorV2V3Interface.sol";
+import {AggregatorInterface} from "../vendor/AggregatorV2V3Interface.sol";
+import {AggregatorV3Interface} from "../vendor/AggregatorV2V3Interface.sol";
 import {DataStreamsStructs} from "../vendor/DataStreamsStructs.sol";
 import {AdrastiaDataStreamsCommon} from "../common/AdrastiaDataStreamsCommon.sol";
 import {IDataStreamsFeed} from "./IDataStreamsFeed.sol";
@@ -417,11 +419,6 @@ contract DataStreamsFeed is
      * the hook, and the address of the hook.
      */
     function setHookConfig(uint8 hookType, Hook calldata hookConfig) external virtual onlyRole(Roles.ADMIN) {
-        if (!_isHookTypeValid(hookType)) {
-            // The hook type is invalid. Revert to help the user be aware of this.
-            revert InvalidHookType(hookType);
-        }
-
         if (address(hookConfig.hookAddress) == address(0)) {
             // hookGasLimit must be 0 and allowHookFailure must be false if the hookAddress is zero
             // This is to prevent accidental misconfiguration
@@ -670,10 +667,6 @@ contract DataStreamsFeed is
 
         // Extract report version from reportData
         uint16 reportVersion = (uint16(uint8(reportData[0])) << 8) | uint16(uint8(reportData[1]));
-        if (reportVersion < 2 || reportVersion > 4) {
-            // Invalid report version. Revert early to save on gas (skip verification).
-            revert InvalidReportVersion(reportVersion);
-        }
 
         // Handle fee approval (if any)
         _handleFeeApproval();
@@ -728,6 +721,8 @@ contract DataStreamsFeed is
         return
             interfaceID == type(IDataStreamsFeed).interfaceId ||
             interfaceID == type(AggregatorV2V3Interface).interfaceId ||
+            interfaceID == type(AggregatorInterface).interfaceId ||
+            interfaceID == type(AggregatorV3Interface).interfaceId ||
             AccessControlEnumerable.supportsInterface(interfaceID);
     }
 
@@ -756,10 +751,6 @@ contract DataStreamsFeed is
         if (allowance == 0) {
             feeToken.approve(rewardManager, type(uint256).max);
         }
-    }
-
-    function _isHookTypeValid(uint256 hookType) internal pure virtual returns (bool) {
-        return hookType == uint256(HookType.PreUpdate) || hookType == uint256(HookType.PostUpdate);
     }
 
     function _getHookInterfaceId(uint256 hookType) internal pure virtual returns (bytes4) {
@@ -836,6 +827,11 @@ contract DataStreamsFeed is
             revert FeedMismatch(feedId, reportFeedId);
         }
 
+        if (reportTimestamp == 0) {
+            // The report is invalid
+            revert InvalidReport();
+        }
+
         if (block.timestamp >= reportExpiresAt) {
             revert ReportIsExpired(reportExpiresAt, uint32(block.timestamp));
         }
@@ -864,11 +860,6 @@ contract DataStreamsFeed is
         if (reportTimestamp <= lastReport.observationTimestamp) {
             // The report is stale
             revert StaleReport(lastReport.observationTimestamp, reportTimestamp);
-        }
-
-        if (reportTimestamp == 0) {
-            // The report is invalid
-            revert InvalidReport();
         }
 
         uint32 newRoundId = lastReport.roundId + 1;
