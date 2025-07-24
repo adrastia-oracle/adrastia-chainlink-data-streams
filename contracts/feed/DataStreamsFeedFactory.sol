@@ -109,6 +109,7 @@ contract DataStreamsFeedFactory {
         require(feedAddress.code.length == 0, "Feed already deployed at computed address");
 
         assembly {
+            // Skip the first 32 (0x20) bytes which store the length of the byte array
             feedAddress := create2(0, add(bytecode, 0x20), mload(bytecode), finalSalt)
             if iszero(extcodesize(feedAddress)) {
                 revert(0, 0)
