@@ -18,6 +18,18 @@ contract FeedDataFixture is DataStreamsStructs {
         return generateReportData(feedId, validFrom, observationsTimestamp, expiresAt, price, signed);
     }
 
+    function generateSimpleReportDataWithPrice(
+        bytes32 feedId,
+        int192 price,
+        bool signed
+    ) public view returns (bytes memory unverifiedReport) {
+        uint32 validFrom = uint32(block.timestamp - 3600); // Valid from 1 hour ago
+        uint32 observationsTimestamp = validFrom + 1;
+        uint32 expiresAt = uint32(block.timestamp + 3600); // Expires in 1 hour
+
+        return generateReportData(feedId, validFrom, observationsTimestamp, expiresAt, price, signed);
+    }
+
     function generateReportData(
         bytes32 feedId,
         uint32 validFromTimestamp,

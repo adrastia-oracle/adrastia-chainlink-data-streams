@@ -21,7 +21,7 @@ contract VerifierStub is IVerifierProxy, DataStreamsStructs, FeedDataFixture {
     function verify(
         bytes calldata payload,
         bytes calldata parameterPayload
-    ) external payable override returns (bytes memory) {
+    ) public payable override returns (bytes memory) {
         if (_feeManager != address(0)) {
             address linkAddress = IFeeManager(_feeManager).i_linkAddress();
             address rewardManager = IFeeManager(_feeManager).i_rewardManager();
@@ -85,7 +85,7 @@ contract VerifierStub is IVerifierProxy, DataStreamsStructs, FeedDataFixture {
 
         for (uint256 i = 0; i < len; ++i) {
             // Call verify() for each entry
-            verifiedReports[i] = this.verify(payloads[i], parameterPayload);
+            verifiedReports[i] = verify(payloads[i], parameterPayload);
         }
     }
 
