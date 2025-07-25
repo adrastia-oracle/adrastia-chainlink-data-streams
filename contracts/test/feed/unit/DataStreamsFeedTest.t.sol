@@ -1052,10 +1052,14 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describeBasicVerifyTest(uint8 reportVersion) internal {
+        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+            ? ETH_USD_V3.feedId
+            : ETH_USD_V2.feedId;
+
         // This test checks that a valid report can be verified and stored.
         DataStreamsFeed feed = new DataStreamsFeed(
             address(verifierStub),
-            ETH_USD_V3.feedId,
+            feedId,
             ETH_USD_V3.decimals,
             ETH_USD_V3.description
         );
@@ -1068,13 +1072,12 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         // Create a valid report
         bytes memory unverifiedReport = generateReportData(
-            ETH_USD_V3.feedId,
+            feedId,
             validFrom,
             observationsTimestamp,
             expiresAt,
             price,
-            true,
-            reportVersion
+            true
         );
 
         // Check that the report was stored correctly
@@ -1089,7 +1092,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         vm.expectEmit(true, true, true, true);
 
         emit DataStreamsFeed.ReportUpdated(
-            ETH_USD_V3.feedId,
+            feedId,
             address(this),
             expectedRoundId,
             price,
@@ -1148,10 +1151,14 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describeBasicFailingVerifyTest(uint8 reportVersion) internal {
+        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+            ? ETH_USD_V3.feedId
+            : ETH_USD_V2.feedId;
+
         // This test checks that an invalid report cannot be verified and stored.
         DataStreamsFeed feed = new DataStreamsFeed(
             address(verifierStub),
-            ETH_USD_V3.feedId,
+            feedId,
             ETH_USD_V3.decimals,
             ETH_USD_V3.description
         );
@@ -1164,13 +1171,12 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         // Create an invalid report (not signed)
         bytes memory unverifiedReport = generateReportData(
-            ETH_USD_V3.feedId,
+            feedId,
             validFrom,
             observationsTimestamp,
             expiresAt,
             price,
-            false,
-            reportVersion
+            false
         );
 
         bytes memory parameterPayload = abi.encode(address(0));
@@ -1206,11 +1212,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         feed.setPaused(true);
 
         // Create a valid report
-        bytes memory unverifiedReport = generateSimpleReportData(
-            ETH_USD_V3.feedId,
-            true,
-            4 // Using version 4 for this test
-        );
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -1228,16 +1230,12 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         );
 
         // Create a valid report with a different feed ID
-        bytes memory unverifiedReport = generateSimpleReportData(
-            BTC_USD_V3.feedId,
-            true,
-            4 // Using version 4 for this test
-        );
+        bytes memory unverifiedReport = generateSimpleReportData(BTC_USD_V4.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
         vm.expectRevert(
-            abi.encodeWithSelector(DataStreamsFeed.FeedMismatch.selector, ETH_USD_V3.feedId, BTC_USD_V3.feedId)
+            abi.encodeWithSelector(DataStreamsFeed.FeedMismatch.selector, ETH_USD_V3.feedId, BTC_USD_V4.feedId)
         );
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
     }
@@ -1252,11 +1250,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         );
 
         // Create a valid report with a different feed ID
-        bytes memory unverifiedReport = generateSimpleReportData(
-            BTC_USD_V3.feedId,
-            true,
-            3 // Using version 3 for this test
-        );
+        bytes memory unverifiedReport = generateSimpleReportData(BTC_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -1276,16 +1270,12 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         );
 
         // Create a valid report with a different feed ID
-        bytes memory unverifiedReport = generateSimpleReportData(
-            BTC_USD_V3.feedId,
-            true,
-            2 // Using version 2 for this test
-        );
+        bytes memory unverifiedReport = generateSimpleReportData(BTC_USD_V2.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
         vm.expectRevert(
-            abi.encodeWithSelector(DataStreamsFeed.FeedMismatch.selector, ETH_USD_V3.feedId, BTC_USD_V3.feedId)
+            abi.encodeWithSelector(DataStreamsFeed.FeedMismatch.selector, ETH_USD_V3.feedId, BTC_USD_V2.feedId)
         );
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
     }
@@ -1302,7 +1292,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         uint8 version = UNSUPPORTED_REPORT_VERSION;
 
         // Create a valid report with an unsupported version
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, version);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V60.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -1311,10 +1301,14 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describe_verifyAndUpdateReport_expiredReportTest(uint8 reportVersion, uint32 secondsExpired) internal {
+        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+            ? ETH_USD_V3.feedId
+            : ETH_USD_V2.feedId;
+
         // This test checks that an expired report cannot be verified and stored.
         DataStreamsFeed feed = new DataStreamsFeed(
             address(verifierStub),
-            ETH_USD_V3.feedId,
+            feedId,
             ETH_USD_V3.decimals,
             ETH_USD_V3.description
         );
@@ -1326,13 +1320,12 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         uint32 expiresAt = uint32(block.timestamp - secondsExpired);
 
         bytes memory unverifiedReport = generateReportData(
-            ETH_USD_V3.feedId,
+            feedId,
             validFrom,
             observationsTimestamp,
             expiresAt,
             price,
-            true,
-            reportVersion
+            true
         );
 
         bytes memory parameterPayload = abi.encode(address(0));
@@ -1366,9 +1359,13 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describe_verifyAndUpdateReport_notValidYetTest(uint8 reportVersion) internal {
+        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+            ? ETH_USD_V3.feedId
+            : ETH_USD_V2.feedId;
+
         DataStreamsFeed feed = new DataStreamsFeed(
             address(verifierStub),
-            ETH_USD_V3.feedId,
+            feedId,
             ETH_USD_V3.decimals,
             ETH_USD_V3.description
         );
@@ -1380,13 +1377,12 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         uint32 expiresAt = uint32(block.timestamp + 7200); // Expires in 2 hours
 
         bytes memory unverifiedReport = generateReportData(
-            ETH_USD_V3.feedId,
+            feedId,
             validFrom,
             observationsTimestamp,
             expiresAt,
             price,
-            true,
-            reportVersion
+            true
         );
 
         bytes memory parameterPayload = abi.encode(address(0));
@@ -1410,9 +1406,13 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describe_verifyAndUpdateReport_observationsTimestampInFuture(uint8 reportVersion) internal {
+        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+            ? ETH_USD_V3.feedId
+            : ETH_USD_V2.feedId;
+
         DataStreamsFeed feed = new DataStreamsFeed(
             address(verifierStub),
-            ETH_USD_V3.feedId,
+            feedId,
             ETH_USD_V3.decimals,
             ETH_USD_V3.description
         );
@@ -1424,13 +1424,12 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         uint32 expiresAt = uint32(block.timestamp + 7200); // Expires in 2 hours
 
         bytes memory unverifiedReport = generateReportData(
-            ETH_USD_V3.feedId,
+            feedId,
             validFrom,
             observationsTimestamp,
             expiresAt,
             price,
-            true,
-            reportVersion
+            true
         );
 
         bytes memory parameterPayload = abi.encode(address(0));
@@ -1458,14 +1457,18 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describe_verifyAndUpdateReport_duplicateReport(uint8 reportVersion) internal {
+        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+            ? ETH_USD_V3.feedId
+            : ETH_USD_V2.feedId;
+
         DataStreamsFeed feed = new DataStreamsFeed(
             address(verifierStub),
-            ETH_USD_V3.feedId,
+            feedId,
             ETH_USD_V3.decimals,
             ETH_USD_V3.description
         );
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, reportVersion);
+        bytes memory unverifiedReport = generateSimpleReportData(feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -1489,9 +1492,13 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describe_verifyAndUpdateReport_staleReport(uint8 reportVersion, uint32 secondsStale) internal {
+        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+            ? ETH_USD_V3.feedId
+            : ETH_USD_V2.feedId;
+
         DataStreamsFeed feed = new DataStreamsFeed(
             address(verifierStub),
-            ETH_USD_V3.feedId,
+            feedId,
             ETH_USD_V3.decimals,
             ETH_USD_V3.description
         );
@@ -1503,13 +1510,12 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         uint32 expiresAt = uint32(block.timestamp + 7200); // Expires in 2 hours
 
         bytes memory unverifiedReport = generateReportData(
-            ETH_USD_V3.feedId,
+            feedId,
             validFrom,
             observationsTimestamp,
             expiresAt,
             price,
-            true,
-            reportVersion
+            true
         );
 
         bytes memory parameterPayload = abi.encode(address(0));
@@ -1518,13 +1524,12 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
 
         unverifiedReport = generateReportData(
-            ETH_USD_V3.feedId,
+            feedId,
             validFrom,
             observationsTimestamp - secondsStale,
             expiresAt,
             price + 1, // Slightly different price to simulate a new report
-            true,
-            reportVersion
+            true
         );
 
         vm.expectRevert(
@@ -1562,9 +1567,13 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describe_verifyAndUpdateReport_observationsTimestampIsZero(uint8 reportVersion) internal {
+        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+            ? ETH_USD_V3.feedId
+            : ETH_USD_V2.feedId;
+
         DataStreamsFeed feed = new DataStreamsFeed(
             address(verifierStub),
-            ETH_USD_V3.feedId,
+            feedId,
             ETH_USD_V3.decimals,
             ETH_USD_V3.description
         );
@@ -1576,13 +1585,12 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         uint32 expiresAt = uint32(block.timestamp + 7200); // Expires in 2 hours
 
         bytes memory unverifiedReport = generateReportData(
-            ETH_USD_V3.feedId,
+            feedId,
             validFrom,
             observationsTimestamp,
             expiresAt,
             price,
-            true,
-            reportVersion
+            true
         );
 
         bytes memory parameterPayload = abi.encode(address(0));
@@ -1634,8 +1642,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
             observationsTimestamp,
             expiresAt,
             price,
-            true,
-            4
+            true
         );
 
         bytes memory parameterPayload = abi.encode(address(0));
@@ -1691,8 +1698,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
             observationsTimestamp,
             expiresAt,
             price,
-            true,
-            4
+            true
         );
 
         bytes memory parameterPayload = abi.encode(address(0));
@@ -1760,8 +1766,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
             observationsTimestamp,
             expiresAt,
             price,
-            true,
-            4
+            true
         );
 
         bytes memory parameterPayload = abi.encode(address(0));
@@ -1825,7 +1830,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         feed.setHookConfig(uint8(DataStreamsFeed.HookType.PreUpdate), preHookConfig);
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -1866,7 +1871,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         feed.setHookConfig(uint8(DataStreamsFeed.HookType.PostUpdate), postHookConfig);
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -1915,7 +1920,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         feed.setHookConfig(uint8(DataStreamsFeed.HookType.PreUpdate), preHookConfig);
         feed.setHookConfig(uint8(DataStreamsFeed.HookType.PostUpdate), postHookConfig);
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -1966,7 +1971,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         feed.setHookConfig(uint8(DataStreamsFeed.HookType.PreUpdate), preHookConfig);
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -2001,7 +2006,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         feed.setHookConfig(uint8(DataStreamsFeed.HookType.PostUpdate), postHookConfig);
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -2044,7 +2049,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         feed.setHookConfig(uint8(DataStreamsFeed.HookType.PreUpdate), preHookConfig);
         feed.setHookConfig(uint8(DataStreamsFeed.HookType.PostUpdate), postHookConfig);
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -2087,7 +2092,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         feed.setHookConfig(uint8(DataStreamsFeed.HookType.PreUpdate), preHookConfig);
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -2128,7 +2133,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         feed.setHookConfig(uint8(DataStreamsFeed.HookType.PostUpdate), postHookConfig);
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -2169,7 +2174,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         feed.setHookConfig(uint8(DataStreamsFeed.HookType.PreUpdate), preHookConfig);
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -2205,7 +2210,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         feed.setHookConfig(uint8(DataStreamsFeed.HookType.PostUpdate), postHookConfig);
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0));
 
@@ -2326,8 +2331,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
             observationsTimestamp,
             expiresAt,
             price,
-            true,
-            4
+            true
         );
 
         bytes memory parameterPayload = abi.encode(address(0));
@@ -2371,8 +2375,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
             observationsTimestamp,
             expiresAt,
             price,
-            true,
-            4
+            true
         );
 
         bytes memory parameterPayload = abi.encode(address(0));
@@ -2404,7 +2407,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
             ETH_USD_V3.description
         );
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
         bytes memory parameterPayload = abi.encode(address(0));
 
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
@@ -2423,7 +2426,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
             ETH_USD_V3.description
         );
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
         bytes memory parameterPayload = abi.encode(address(0));
 
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
@@ -2442,7 +2445,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
             ETH_USD_V3.description
         );
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
         bytes memory parameterPayload = abi.encode(address(0));
 
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
@@ -2461,8 +2464,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
             ETH_USD_V3.description
         );
 
-        uint8 reportVersion = 4;
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, reportVersion);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
         bytes memory parameterPayload = abi.encode(address(0));
         bytes memory verifiedReport = verifierStub.verify(unverifiedReport, parameterPayload);
 
@@ -2478,7 +2480,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
                 verifierRole
             )
         );
-        feed.updateReport(reportVersion, verifiedReport);
+        feed.updateReport(3, verifiedReport);
     }
 
     function test_updateReport_worksWhenAuthorized() public {
@@ -2489,8 +2491,6 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
             ETH_USD_V3.decimals,
             ETH_USD_V3.description
         );
-
-        uint8 reportVersion = 4;
 
         int192 price = int192(int256((uint256(2000) * 10 ** ETH_USD_V3.decimals))); // Example price
         uint32 validFrom = uint32(block.timestamp - 3600); // Valid from 1 hour ago
@@ -2503,8 +2503,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
             observationsTimestamp,
             expiresAt,
             price,
-            true,
-            reportVersion
+            true
         );
 
         bytes memory parameterPayload = abi.encode(address(0));
@@ -2527,7 +2526,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         );
 
         // This should not revert
-        feed.updateReport(reportVersion, verifiedReport);
+        feed.updateReport(3, verifiedReport);
 
         // Verify that the report was updated correctly
         (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = feed
@@ -2559,7 +2558,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         VerifierStub(address(verifierStub)).setFeeManager(address(feeManagerStub));
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(address(0)); // No fee token provided
 
@@ -2583,7 +2582,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         VerifierStub(address(verifierStub)).setFeeManager(address(feeManagerStub));
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(fakeLink);
 
@@ -2612,7 +2611,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         VerifierStub(address(verifierStub)).setFeeManager(address(feeManagerStub));
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(fakeLink);
 
@@ -2644,7 +2643,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         VerifierStub(address(verifierStub)).setFeeManager(address(feeManagerStub));
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(fakeLink);
 
@@ -2694,7 +2693,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         VerifierStub(address(verifierStub)).setFeeManager(address(feeManagerStub));
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(fakeUsdc); // Wrong fee token
 
@@ -2729,7 +2728,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         VerifierStub(address(verifierStub)).setFeeManager(address(feeManagerStub));
 
-        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        bytes memory unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         bytes memory parameterPayload = abi.encode(fakeLink);
 
@@ -2760,7 +2759,7 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         vm.warp(block.timestamp + 1); // Simulate time passing for the second call
 
         // Reset the unverified report to simulate a new report
-        unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true, 4);
+        unverifiedReport = generateSimpleReportData(ETH_USD_V3.feedId, true);
 
         // Second verifyAndUpdateReport call
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
