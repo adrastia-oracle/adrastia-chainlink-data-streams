@@ -152,6 +152,13 @@ contract AdrastiaDataStreamsUpdater is
     error FeedMismatch(bytes32 expectedFeedId, bytes32 providedFeedId);
 
     /**
+     * @notice Thrown when a feed is not changed.
+     * @param feedId The feed ID.
+     * @param feed The feed address.
+     */
+    error FeedNotChanged(bytes32 feedId, address feed);
+
+    /**
      * @notice Thrown when no feeds were updated during a performUpkeep call.
      */
     error NoFeedsUpdated();
@@ -235,6 +242,10 @@ contract AdrastiaDataStreamsUpdater is
         (bool feedExists_, address oldFeed) = _feedTargets.tryGet(feedId);
         if (!feedExists_) {
             revert FeedNotRegistered(feedId);
+        }
+
+        if (oldFeed == feed) {
+            revert FeedNotChanged(feedId, feed);
         }
 
         _feedTargets.set(feedId, feed);
