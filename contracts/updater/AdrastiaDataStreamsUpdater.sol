@@ -164,6 +164,11 @@ contract AdrastiaDataStreamsUpdater is
     error NoFeedsUpdated();
 
     /**
+     * @notice Thrown when no reports were provided to performUpkeep.
+     */
+    error NoReportsProvided();
+
+    /**
      * @notice Thrown when the verified reports length does not match the unverified reports length.
      * @param unverifiedReportsLength The length of the unverified reports.
      * @param verifiedReportsLength The length of the verified reports.
@@ -456,6 +461,9 @@ contract AdrastiaDataStreamsUpdater is
      */
     function performUpkeep(bytes calldata performData) external payable virtual onlyRoleOrOpenRole(ORACLE_UPDATER) {
         bytes[] memory unverifiedReports = abi.decode(performData, (bytes[]));
+        if (unverifiedReports.length == 0) {
+            revert NoReportsProvided();
+        }
 
         // Retrieve fee manager and reward manager
         IFeeManager feeManager = IFeeManager(address(verifierProxy.s_feeManager()));
