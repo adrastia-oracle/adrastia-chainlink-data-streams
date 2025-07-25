@@ -183,6 +183,10 @@ contract AdrastiaDataStreamsUpdater is
      * @param initialUpdaterAdmin The initial updater admin address.
      */
     constructor(address _verifierProxy, address initialAdmin, address initialUpdaterAdmin) {
+        if (_verifierProxy == address(0)) {
+            revert("Invalid verifier proxy address");
+        }
+
         if (initialAdmin == address(0) || initialUpdaterAdmin == address(0)) {
             revert("Invalid initial admins");
         }

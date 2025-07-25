@@ -29,7 +29,10 @@ interface IWorldChainFeed {
 contract AdrastiaWorldChainDataStreamsUpdater is AdrastiaDataStreamsUpdater {
     using EnumerableMap for EnumerableMap.Bytes32ToAddressMap;
 
-    constructor(address initialAdmin) AdrastiaDataStreamsUpdater(address(0), initialAdmin, initialAdmin) {}
+    constructor(
+        address verifierProxy,
+        address initialAdmin
+    ) AdrastiaDataStreamsUpdater(verifierProxy, initialAdmin, initialAdmin) {}
 
     function performUpkeep(bytes calldata performData) external payable virtual override {
         bytes[] memory unverifiedReports = abi.decode(performData, (bytes[]));
