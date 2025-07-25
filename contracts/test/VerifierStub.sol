@@ -67,8 +67,6 @@ contract VerifierStub is IVerifierProxy, DataStreamsStructs, FeedDataFixture {
         } else if (version == UNSUPPORTED_REPORT_VERSION) {
             return rawData;
         } else {
-            console2.log("Unsupported report version:", version);
-
             revert("VerifierStub: unsupported version");
         }
     }
@@ -89,8 +87,6 @@ contract VerifierStub is IVerifierProxy, DataStreamsStructs, FeedDataFixture {
             // Call verify() for each entry
             verifiedReports[i] = this.verify(payloads[i], parameterPayload);
         }
-
-        console2.log("Reports verified");
     }
 
     /// @inheritdoc IVerifierProxy
