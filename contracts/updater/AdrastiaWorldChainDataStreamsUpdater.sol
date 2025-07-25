@@ -58,7 +58,7 @@ contract AdrastiaWorldChainDataStreamsUpdater is AdrastiaDataStreamsUpdater {
             }
 
             // Get the contract latest report timestamp
-            (, uint256 storedTimestamp) = readUnderlyingFeed(feedId);
+            (, uint256 storedTimestamp) = readUnderlyingFeed(targetFeed);
             if (storedTimestamp >= feedObservationsTimestamp) {
                 // The provided report is old, skip it
                 emit FeedUpdateSkipped(feedId, targetFeed, storedTimestamp, feedObservationsTimestamp, block.timestamp);

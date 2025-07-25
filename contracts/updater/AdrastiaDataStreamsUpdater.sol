@@ -422,11 +422,12 @@ contract AdrastiaDataStreamsUpdater is
             uint256 offchainPublishTime
         ) = abi.decode(checkData, (bytes32, uint256, uint256, int256, uint256));
 
-        if (!_feedTargets.contains(feedId)) {
+        (bool feedExists_, address targetFeed) = _feedTargets.tryGet(feedId);
+        if (!feedExists_) {
             revert FeedNotRegistered(feedId);
         }
 
-        (int256 price, uint256 timestamp) = readUnderlyingFeed(feedId);
+        (int256 price, uint256 timestamp) = readUnderlyingFeed(targetFeed);
 
         bool heartbeatTriggered = false;
         bool priceDeviationTriggered = false;
@@ -496,7 +497,7 @@ contract AdrastiaDataStreamsUpdater is
             }
 
             // Get the contract latest report timestamp
-            (, uint256 storedTimestamp) = readUnderlyingFeed(feedId);
+            (, uint256 storedTimestamp) = readUnderlyingFeed(targetFeed);
             if (storedTimestamp >= feedObservationsTimestamp) {
                 // The provided report is old, skip it
                 emit FeedUpdateSkipped(feedId, targetFeed, storedTimestamp, feedObservationsTimestamp, block.timestamp);
@@ -526,19 +527,12 @@ contract AdrastiaDataStreamsUpdater is
 
     /**
      * @notice Reads the latest onchain price and timestamp for a Data Streams feed.
-     * @param feedId The feed ID.
+     * @param feed The feed address.
      * @return price The latest onchain price.
      * @return timestamp The timestamp of the latest onchain price.
      */
-    function readUnderlyingFeed(bytes32 feedId) internal view virtual returns (int256 price, uint256 timestamp) {
-        // Get the data stream address
-        (bool feedExists_, address targetFeed) = _feedTargets.tryGet(feedId);
-        if (!feedExists_) {
-            // The updater should never try to update a feed that is not registered
-            revert FeedNotRegistered(feedId);
-        }
-
-        (bool success, bytes memory data) = targetFeed.staticcall(
+    function readUnderlyingFeed(address feed) internal view virtual returns (int256 price, uint256 timestamp) {
+        (bool success, bytes memory data) = feed.staticcall(
             abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector)
         );
         if (!success) {
