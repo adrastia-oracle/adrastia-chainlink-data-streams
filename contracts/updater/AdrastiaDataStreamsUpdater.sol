@@ -545,9 +545,10 @@ contract AdrastiaDataStreamsUpdater is
             // The call fails if the report is expired or missing. Return zeros to signal this.
             return (0, 0);
         } else {
-            (, int256 answer, , uint256 updatedAt, ) = abi.decode(data, (uint80, int256, uint256, uint256, uint80));
+            // startedAt contains the observationsTimestamp, which is the timestamp of the latest report.
+            (, int256 answer, uint256 startedAt, , ) = abi.decode(data, (uint80, int256, uint256, uint256, uint80));
 
-            return (answer, updatedAt);
+            return (answer, startedAt);
         }
     }
 
