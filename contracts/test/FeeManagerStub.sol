@@ -12,10 +12,10 @@ contract FeeManagerStub is IFeeManager {
     uint256 internal feeAmount;
 
     function getFeeAndReward(
-        address subscriber,
-        bytes memory unverifiedReport,
+        address /* subscriber */,
+        bytes memory /* unverifiedReport */,
         address quoteAddress
-    ) external returns (Common.Asset memory, Common.Asset memory, uint256) {
+    ) external view returns (Common.Asset memory, Common.Asset memory, uint256) {
         if (quoteAddress != linkAddress) {
             revert("FeeManagerStub: quote address does not match fee manager's link address");
         }

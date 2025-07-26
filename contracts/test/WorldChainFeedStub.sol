@@ -16,7 +16,7 @@ contract WorldChainFeedStub is FeedStub, IWorldChainFeed {
         FEED_ID = _feedId;
     }
 
-    function feedId() public view override returns (bytes32) {
+    function feedId() public pure override returns (bytes32) {
         revert("This is not implemented in world chain feeds");
     }
 
@@ -29,10 +29,7 @@ contract WorldChainFeedStub is FeedStub, IWorldChainFeed {
         return hex"";
     }
 
-    function updateReport(
-        bytes memory verifyReportRequest,
-        bytes memory parameterPayload
-    ) external returns (bytes memory) {
+    function updateReport(uint16, bytes calldata) external pure override {
         revert("This function is not implemented in world chain feeds");
     }
 }
