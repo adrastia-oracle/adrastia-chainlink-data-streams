@@ -137,11 +137,6 @@ contract DataStreamsFeed is
     IVerifierProxy public immutable override verifierProxy;
 
     /**
-     * @notice The ID of the feed. This is the same as the feedId in the report.
-     */
-    bytes32 public immutable override feedId;
-
-    /**
      * @notice The number of decimals used in the feed. This is the same as the decimals used in the report.
      */
     uint8 public immutable override decimals;
@@ -150,6 +145,11 @@ contract DataStreamsFeed is
      * @notice The description of the feed.
      */
     string public override description;
+
+    /**
+     * @notice The ID of the feed. This is the same as the feedId in the report.
+     */
+    bytes32 internal immutable _feedId;
 
     /**
      * @notice The latest report data.
@@ -338,20 +338,20 @@ contract DataStreamsFeed is
      * @notice Constructs a new DataStreamsFeed contract, granting the ADMIN role to the creator of the contract.
      *
      * @param verifierProxy_ The address of the Chainlink verifier proxy contract.
-     * @param _feedId The ID of the feed. This is the same as the feedId in the report.
-     * @param _decimals The number of decimals used in the feed. This is the same as the decimals used in the report.
-     * @param _description The description of the feed.
+     * @param feedId_ The ID of the feed. This is the same as the feedId in the report.
+     * @param decimals_ The number of decimals used in the feed. This is the same as the decimals used in the report.
+     * @param description_ The description of the feed.
      */
-    constructor(address verifierProxy_, bytes32 _feedId, uint8 _decimals, string memory _description) {
-        if (verifierProxy_ == address(0) || _feedId == bytes32(0)) {
+    constructor(address verifierProxy_, bytes32 feedId_, uint8 decimals_, string memory description_) {
+        if (verifierProxy_ == address(0) || feedId_ == bytes32(0)) {
             // These are definitely invalid arguments
             revert InvalidConstructorArguments();
         }
 
         verifierProxy = IVerifierProxy(verifierProxy_);
-        feedId = _feedId;
-        decimals = _decimals;
-        description = _description;
+        _feedId = feedId_;
+        decimals = decimals_;
+        description = description_;
 
         latestReport = TruncatedReport(0, 0, 0, 0, 0);
         configAndState = ConfigAndState({
@@ -360,6 +360,15 @@ contract DataStreamsFeed is
         });
 
         _initializeRoles(msg.sender);
+    }
+
+    /**
+     * @notice Returns the ID of the feed. This is the same as the feedId in the report.
+     *
+     * @return The ID of the feed.
+     */
+    function feedId() external view virtual override returns (bytes32) {
+        return _feedId;
     }
 
     /**
@@ -823,8 +832,8 @@ contract DataStreamsFeed is
             revert InvalidReportVersion(reportVersion);
         }
 
-        if (reportFeedId != feedId) {
-            revert FeedMismatch(feedId, reportFeedId);
+        if (reportFeedId != _feedId) {
+            revert FeedMismatch(_feedId, reportFeedId);
         }
 
         if (reportTimestamp == 0) {
@@ -870,7 +879,7 @@ contract DataStreamsFeed is
             (bool success, bytes memory returnData) = preUpdateHook.hookAddress.call{gas: preUpdateHook.hookGasLimit}(
                 abi.encodeWithSelector(
                     IDataStreamsPreUpdateHook.onPreReportUpdate.selector,
-                    feedId,
+                    _feedId,
                     newRoundId,
                     reportPrice,
                     reportTimestamp,
@@ -922,7 +931,7 @@ contract DataStreamsFeed is
             (bool success, bytes memory returnData) = postUpdateHook.hookAddress.call{gas: postUpdateHook.hookGasLimit}(
                 abi.encodeWithSelector(
                     IDataStreamsPostUpdateHook.onPostReportUpdate.selector,
-                    feedId,
+                    _feedId,
                     newRoundId,
                     reportPrice,
                     reportTimestamp,
