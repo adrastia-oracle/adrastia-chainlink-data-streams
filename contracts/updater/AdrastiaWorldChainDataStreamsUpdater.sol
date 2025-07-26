@@ -36,6 +36,9 @@ contract AdrastiaWorldChainDataStreamsUpdater is AdrastiaDataStreamsUpdater {
 
     function performUpkeep(bytes calldata performData) external payable virtual override {
         bytes[] memory unverifiedReports = abi.decode(performData, (bytes[]));
+        if (unverifiedReports.length == 0) {
+            revert NoReportsProvided();
+        }
 
         bytes memory parameterPayload = abi.encode(address(0));
 
