@@ -1,5 +1,8 @@
 # Adrastia Chainlink Data Streams
 
+![243 out of 243 tests passing](https://img.shields.io/badge/tests-243/243%20passing-brightgreen.svg?style=flat-square)
+![test-coverage 100%](https://img.shields.io/badge/test%20coverage-100%25-brightgreen.svg?style=flat-square)
+
 Adrastia Chainlink Data Streams is a set of contracts that allow for easy creation of [Chainlink Data Streams](https://docs.chain.link/data-streams) feed contracts that are compatible with [Adrastia's Chainlink Data Streams Updater](https://docs.adrastia.io/automatos/chainlink-data-streams-feed-updater) service.
 
 > [!WARNING]  
