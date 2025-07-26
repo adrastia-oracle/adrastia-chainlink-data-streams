@@ -27,7 +27,7 @@ import {FeeManagerStub} from "../../FeeManagerStub.sol";
 import {RewardManagerStub} from "../../RewardManagerStub.sol";
 import {console2} from "forge-std/console2.sol";
 
-contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
+contract DataStreamsFeedForkTest is Test, FeedConstants, FeedDataFixture {
     struct ReportData {
         bytes32 feedId;
         int192 price;
