@@ -28,7 +28,7 @@ import {IDataStreamsPostUpdateHook} from "./hooks/IDataStreamsPostUpdateHook.sol
  *
  * Access is controlled using OpenZeppelin's AccessControlEnumerable, allowing for fine-grained permissions.
  * The roles are setup as follows:
- * - ADMIN: Can manage the role and sub-roles. Cam witjdraw ERC20 tokens from the contract. Can set the update
+ * - ADMIN: Can manage the role and sub-roles. Can withdraw ERC20 tokens from the contract. Can set the update
  *  hook configuration.
  *   - REPORT_VERIFIER: Can call `updateReport` to update the latest report data. Ideally, accounts with this role
  *     should be the Adrastia Data Streams Updater contract that verifies reports in bulk. This role is not required
