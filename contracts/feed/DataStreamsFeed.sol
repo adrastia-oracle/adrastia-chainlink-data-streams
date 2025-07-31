@@ -48,7 +48,7 @@ import {IDataStreamsPostUpdateHook} from "./hooks/IDataStreamsPostUpdateHook.sol
  * Updates to the feed can be paused using the `setPaused` function, which can only be called by accounts with the
  * UPDATE_PAUSE_ADMIN role. This is useful for emergency situations or maintenance.
  *
- * The `setHookConfig` function allows for setting a hooks before or after a report is updated.
+ * The `setHookConfig` function allows for setting a hook before and/or after a report is updated.
  */
 contract DataStreamsFeed is
     IDataStreamsFeed,
