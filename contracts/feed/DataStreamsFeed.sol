@@ -780,6 +780,22 @@ contract DataStreamsFeed is
         return hooks[hookType];
     }
 
+    function _executeHook(uint256 hookType, bytes memory callData) internal virtual {
+        Hook memory hook = _getHook(hookType);
+
+        (bool success, bytes memory returnData) = hook.hookAddress.call{gas: hook.hookGasLimit}(callData);
+
+        if (!success) {
+            if (hook.allowHookFailure) {
+                // The hook failed, but we allow it to fail
+                emit HookFailed(hookType, hook.hookAddress, returnData, block.timestamp);
+            } else {
+                // The hook failed, and we do not allow it to fail
+                revert HookFailedError(hookType, hook.hookAddress, returnData);
+            }
+        }
+    }
+
     /**
      * @notice Updates the latest report data.
      *
@@ -874,29 +890,13 @@ contract DataStreamsFeed is
         uint32 newRoundId = lastReport.roundId + 1;
 
         if (_isHookSet(config.activeHookTypes, uint256(HookType.PreUpdate))) {
-            Hook memory preUpdateHook = _getHook(uint256(HookType.PreUpdate));
-
-            (bool success, bytes memory returnData) = preUpdateHook.hookAddress.call{gas: preUpdateHook.hookGasLimit}(
+            _executeHook(
+                uint256(HookType.PreUpdate),
                 abi.encodeCall(
                     IDataStreamsPreUpdateHook.onPreReportUpdate,
                     (_feedId, newRoundId, reportPrice, reportTimestamp, reportExpiresAt, uint32(block.timestamp))
                 )
             );
-
-            if (!success) {
-                if (preUpdateHook.allowHookFailure) {
-                    // The hook failed, but we allow it to fail
-                    emit HookFailed(
-                        uint256(HookType.PreUpdate),
-                        preUpdateHook.hookAddress,
-                        returnData,
-                        block.timestamp
-                    );
-                } else {
-                    // The hook failed, and we do not allow it to fail
-                    revert HookFailedError(uint256(HookType.PreUpdate), preUpdateHook.hookAddress, returnData);
-                }
-            }
         }
 
         historicalReports[newRoundId] = latestReport = TruncatedReport({
@@ -921,29 +921,13 @@ contract DataStreamsFeed is
         );
 
         if (_isHookSet(config.activeHookTypes, uint256(HookType.PostUpdate))) {
-            Hook memory postUpdateHook = _getHook(uint256(HookType.PostUpdate));
-
-            (bool success, bytes memory returnData) = postUpdateHook.hookAddress.call{gas: postUpdateHook.hookGasLimit}(
+            _executeHook(
+                uint256(HookType.PostUpdate),
                 abi.encodeCall(
                     IDataStreamsPostUpdateHook.onPostReportUpdate,
                     (_feedId, newRoundId, reportPrice, reportTimestamp, reportExpiresAt, uint32(block.timestamp))
                 )
             );
-
-            if (!success) {
-                if (postUpdateHook.allowHookFailure) {
-                    // The hook failed, but we allow it to fail
-                    emit HookFailed(
-                        uint256(HookType.PostUpdate),
-                        postUpdateHook.hookAddress,
-                        returnData,
-                        block.timestamp
-                    );
-                } else {
-                    // The hook failed, and we do not allow it to fail
-                    revert HookFailedError(uint256(HookType.PostUpdate), postUpdateHook.hookAddress, returnData);
-                }
-            }
         }
     }
 
