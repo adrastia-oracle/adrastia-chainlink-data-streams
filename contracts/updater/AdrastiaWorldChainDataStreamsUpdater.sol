@@ -71,7 +71,7 @@ contract AdrastiaWorldChainDataStreamsUpdater is AdrastiaDataStreamsUpdater {
 
             // Pass the unverified report to the feed contract for verification and update
             (bool success, bytes memory data) = targetFeed.call(
-                abi.encodeWithSelector(IWorldChainFeed.updatePriceData.selector, unverifiedReports[i], parameterPayload)
+                abi.encodeCall(IWorldChainFeed.updatePriceData, (unverifiedReports[i], parameterPayload))
             );
             if (success) {
                 // Emit an event for the successful update

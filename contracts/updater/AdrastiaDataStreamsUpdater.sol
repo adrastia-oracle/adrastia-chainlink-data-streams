@@ -515,7 +515,7 @@ contract AdrastiaDataStreamsUpdater is
 
             // Attempt to write the report to the data stream
             (bool success, bytes memory data) = targetFeed.call(
-                abi.encodeWithSelector(IDataStreamsFeed.updateReport.selector, reportVersion, verifiedReports[i])
+                abi.encodeCall(IDataStreamsFeed.updateReport, (reportVersion, verifiedReports[i]))
             );
             if (success) {
                 // Emit an event for the successful update
@@ -540,9 +540,7 @@ contract AdrastiaDataStreamsUpdater is
      * @return timestamp The timestamp of the latest onchain price.
      */
     function readUnderlyingFeed(address feed) internal view virtual returns (int256 price, uint256 timestamp) {
-        (bool success, bytes memory data) = feed.staticcall(
-            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector)
-        );
+        (bool success, bytes memory data) = feed.staticcall(abi.encodeCall(AggregatorV3Interface.latestRoundData, ()));
         if (!success) {
             // The call fails if the report is expired or missing. Return zeros to signal this.
             return (0, 0);
