@@ -49,7 +49,33 @@ contract FeedDataFixture is DataStreamsStructs {
 
         bytes memory encodedReport;
 
-        if (reportVersion == 4) {
+        if (reportVersion == 8) {
+            encodedReport = abi.encode(
+                ReportV8({
+                    feedId: feedId,
+                    validFromTimestamp: validFromTimestamp,
+                    observationsTimestamp: observationsTimestamp,
+                    nativeFee: 0,
+                    linkFee: 0,
+                    expiresAt: expiresAt,
+                    lastUpdateTimestamp: uint64(observationsTimestamp) * 1e9,
+                    midPrice: price,
+                    marketStatus: 1
+                })
+            );
+        } else if (reportVersion == 7) {
+            encodedReport = abi.encode(
+                ReportV7({
+                    feedId: feedId,
+                    validFromTimestamp: validFromTimestamp,
+                    observationsTimestamp: observationsTimestamp,
+                    nativeFee: 0,
+                    linkFee: 0,
+                    expiresAt: expiresAt,
+                    exchangeRate: price
+                })
+            );
+        } else if (reportVersion == 4) {
             encodedReport = abi.encode(
                 ReportV4({
                     feedId: feedId,

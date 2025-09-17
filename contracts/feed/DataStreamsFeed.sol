@@ -844,6 +844,26 @@ contract DataStreamsFeed is
             reportValidFromTimestamp = verifiedReport.validFromTimestamp;
             reportTimestamp = verifiedReport.observationsTimestamp;
             reportExpiresAt = verifiedReport.expiresAt;
+        } else if (reportVersion == 7) {
+            // v7 report schema
+            ReportV7 memory verifiedReport = abi.decode(verifiedReportData, (ReportV7));
+
+            // Extract the details
+            reportFeedId = verifiedReport.feedId;
+            reportPrice = verifiedReport.exchangeRate;
+            reportValidFromTimestamp = verifiedReport.validFromTimestamp;
+            reportTimestamp = verifiedReport.observationsTimestamp;
+            reportExpiresAt = verifiedReport.expiresAt;
+        } else if (reportVersion == 8) {
+            // v8 report schema
+            ReportV8 memory verifiedReport = abi.decode(verifiedReportData, (ReportV8));
+
+            // Extract the details
+            reportFeedId = verifiedReport.feedId;
+            reportPrice = verifiedReport.midPrice;
+            reportValidFromTimestamp = verifiedReport.validFromTimestamp;
+            reportTimestamp = verifiedReport.observationsTimestamp;
+            reportExpiresAt = verifiedReport.expiresAt;
         } else {
             revert InvalidReportVersion(reportVersion);
         }

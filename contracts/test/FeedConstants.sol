@@ -67,4 +67,18 @@ contract FeedConstants {
 
     FeedDescriptor internal FAKE_USD_8DEC_V3 =
         FeedDescriptor({feedId: bytes32(uint256(0x01)), decimals: 8, description: "FAKE/USD"});
+
+    FeedDescriptor internal USR_USD_V7 =
+        FeedDescriptor({
+            feedId: 0x0007c505034a2b88e6fe4829ae1b559911856a28d0643c6af36c7d7a6de7add6,
+            decimals: 10,
+            description: "USR/USD"
+        });
+
+    FeedDescriptor internal AAPL_USD_V8 =
+        FeedDescriptor({
+            feedId: 0x0008e64e9538dea4c50f9a8203d2c8993b6f3756da73cabafbb204637310c450,
+            decimals: 18,
+            description: "AAPL/USD"
+        });
 }

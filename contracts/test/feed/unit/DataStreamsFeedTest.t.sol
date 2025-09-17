@@ -1052,7 +1052,11 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describeBasicVerifyTest(uint8 reportVersion) internal {
-        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+        bytes32 feedId = reportVersion == 8 ? USR_USD_V7.feedId : reportVersion == 7
+            ? AAPL_USD_V8.feedId
+            : reportVersion == 4
+            ? ETH_USD_V4.feedId
+            : reportVersion == 3
             ? ETH_USD_V3.feedId
             : ETH_USD_V2.feedId;
 
@@ -1138,6 +1142,14 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         assertEq(answeredInRound, expectedRoundId, "Latest answered in round should match the expected round ID");
     }
 
+    function test_verifyAndUpdateReport_VerifiesAndStoresValidReportV8() public {
+        describeBasicVerifyTest(8);
+    }
+
+    function test_verifyAndUpdateReport_VerifiesAndStoresValidReportV7() public {
+        describeBasicVerifyTest(7);
+    }
+
     function test_verifyAndUpdateReport_VerifiesAndStoresValidReportV4() public {
         describeBasicVerifyTest(4);
     }
@@ -1151,7 +1163,11 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describeBasicFailingVerifyTest(uint8 reportVersion) internal {
-        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+        bytes32 feedId = reportVersion == 8 ? AAPL_USD_V8.feedId : reportVersion == 7
+            ? USR_USD_V7.feedId
+            : reportVersion == 4
+            ? ETH_USD_V4.feedId
+            : reportVersion == 3
             ? ETH_USD_V3.feedId
             : ETH_USD_V2.feedId;
 
@@ -1184,6 +1200,14 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         // Attempt to verify
         vm.expectRevert(abi.encodePacked("REPORT_NOT_SIGNED"));
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
+    }
+
+    function test_verifyAndUpdateReport_RevertsWhenReportV8IsInvalid() public {
+        describeBasicFailingVerifyTest(8);
+    }
+
+    function test_verifyAndUpdateReport_RevertsWhenReportV7IsInvalid() public {
+        describeBasicFailingVerifyTest(7);
     }
 
     function test_verifyAndUpdateReport_RevertsWhenReportV4IsInvalid() public {
@@ -1301,7 +1325,11 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describe_verifyAndUpdateReport_expiredReportTest(uint8 reportVersion, uint32 secondsExpired) internal {
-        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+        bytes32 feedId = reportVersion == 8 ? AAPL_USD_V8.feedId : reportVersion == 7
+            ? USR_USD_V7.feedId
+            : reportVersion == 4
+            ? ETH_USD_V4.feedId
+            : reportVersion == 3
             ? ETH_USD_V3.feedId
             : ETH_USD_V2.feedId;
 
@@ -1334,6 +1362,22 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
     }
 
+    function test_verifyAndUpdateReport_revertsWhenReportIsExpired_V8_0secondsAgo() public {
+        describe_verifyAndUpdateReport_expiredReportTest(8, 0);
+    }
+
+    function test_verifyAndUpdateReport_revertsWhenReportIsExpired_V8_1secondAgo() public {
+        describe_verifyAndUpdateReport_expiredReportTest(8, 1);
+    }
+
+    function test_verifyAndUpdateReport_revertsWhenReportIsExpired_V7_0secondsAgo() public {
+        describe_verifyAndUpdateReport_expiredReportTest(7, 0);
+    }
+
+    function test_verifyAndUpdateReport_revertsWhenReportIsExpired_V7_1secondAgo() public {
+        describe_verifyAndUpdateReport_expiredReportTest(7, 1);
+    }
+
     function test_verifyAndUpdateReport_revertsWhenReportIsExpired_V4_0secondsAgo() public {
         describe_verifyAndUpdateReport_expiredReportTest(4, 0);
     }
@@ -1359,7 +1403,11 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describe_verifyAndUpdateReport_notValidYetTest(uint8 reportVersion) internal {
-        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+        bytes32 feedId = reportVersion == 8 ? AAPL_USD_V8.feedId : reportVersion == 7
+            ? USR_USD_V7.feedId
+            : reportVersion == 4
+            ? ETH_USD_V4.feedId
+            : reportVersion == 3
             ? ETH_USD_V3.feedId
             : ETH_USD_V2.feedId;
 
@@ -1393,6 +1441,14 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
     }
 
+    function test_verifyAndUpdateReport_revertsWhenReportIsNotValidYet_V8() public {
+        describe_verifyAndUpdateReport_notValidYetTest(8);
+    }
+
+    function test_verifyAndUpdateReport_revertsWhenReportIsNotValidYet_V7() public {
+        describe_verifyAndUpdateReport_notValidYetTest(7);
+    }
+
     function test_verifyAndUpdateReport_revertsWhenReportIsNotValidYet_V4() public {
         describe_verifyAndUpdateReport_notValidYetTest(4);
     }
@@ -1406,7 +1462,11 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describe_verifyAndUpdateReport_observationsTimestampInFuture(uint8 reportVersion) internal {
-        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+        bytes32 feedId = reportVersion == 8 ? AAPL_USD_V8.feedId : reportVersion == 7
+            ? USR_USD_V7.feedId
+            : reportVersion == 4
+            ? ETH_USD_V4.feedId
+            : reportVersion == 3
             ? ETH_USD_V3.feedId
             : ETH_USD_V2.feedId;
 
@@ -1444,6 +1504,14 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
     }
 
+    function test_verifyAndUpdateReport_revertsWhenObservationsTimestampInFuture_V8() public {
+        describe_verifyAndUpdateReport_observationsTimestampInFuture(8);
+    }
+
+    function test_verifyAndUpdateReport_revertsWhenObservationsTimestampInFuture_V7() public {
+        describe_verifyAndUpdateReport_observationsTimestampInFuture(7);
+    }
+
     function test_verifyAndUpdateReport_revertsWhenObservationsTimestampInFuture_V4() public {
         describe_verifyAndUpdateReport_observationsTimestampInFuture(4);
     }
@@ -1457,7 +1525,11 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describe_verifyAndUpdateReport_duplicateReport(uint8 reportVersion) internal {
-        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+        bytes32 feedId = reportVersion == 8 ? AAPL_USD_V8.feedId : reportVersion == 7
+            ? USR_USD_V7.feedId
+            : reportVersion == 4
+            ? ETH_USD_V4.feedId
+            : reportVersion == 3
             ? ETH_USD_V3.feedId
             : ETH_USD_V2.feedId;
 
@@ -1479,6 +1551,14 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
     }
 
+    function test_verifyAndUpdateReport_revertsWhenDuplicateReport_V8() public {
+        describe_verifyAndUpdateReport_duplicateReport(8);
+    }
+
+    function test_verifyAndUpdateReport_revertsWhenDuplicateReport_V7() public {
+        describe_verifyAndUpdateReport_duplicateReport(7);
+    }
+
     function test_verifyAndUpdateReport_revertsWhenDuplicateReport_V4() public {
         describe_verifyAndUpdateReport_duplicateReport(4);
     }
@@ -1492,7 +1572,11 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describe_verifyAndUpdateReport_staleReport(uint8 reportVersion, uint32 secondsStale) internal {
-        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+        bytes32 feedId = reportVersion == 8 ? AAPL_USD_V8.feedId : reportVersion == 7
+            ? USR_USD_V7.feedId
+            : reportVersion == 4
+            ? ETH_USD_V4.feedId
+            : reportVersion == 3
             ? ETH_USD_V3.feedId
             : ETH_USD_V2.feedId;
 
@@ -1542,6 +1626,22 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
     }
 
+    function test_verifyAndUpdateReport_revertsWhenStaleReport_V8_0scondsStale() public {
+        describe_verifyAndUpdateReport_staleReport(8, 0);
+    }
+
+    function test_verifyAndUpdateReport_revertsWhenStaleReport_V8_1secondStale() public {
+        describe_verifyAndUpdateReport_staleReport(8, 1);
+    }
+
+    function test_verifyAndUpdateReport_revertsWhenStaleReport_V7_0scondsStale() public {
+        describe_verifyAndUpdateReport_staleReport(7, 0);
+    }
+
+    function test_verifyAndUpdateReport_revertsWhenStaleReport_V7_1secondStale() public {
+        describe_verifyAndUpdateReport_staleReport(7, 1);
+    }
+
     function test_verifyAndUpdateReport_revertsWhenStaleReport_V4_0scondsStale() public {
         describe_verifyAndUpdateReport_staleReport(4, 0);
     }
@@ -1567,7 +1667,11 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
     }
 
     function describe_verifyAndUpdateReport_observationsTimestampIsZero(uint8 reportVersion) internal {
-        bytes32 feedId = reportVersion == 4 ? ETH_USD_V4.feedId : reportVersion == 3
+        bytes32 feedId = reportVersion == 8 ? AAPL_USD_V8.feedId : reportVersion == 7
+            ? USR_USD_V7.feedId
+            : reportVersion == 4
+            ? ETH_USD_V4.feedId
+            : reportVersion == 3
             ? ETH_USD_V3.feedId
             : ETH_USD_V2.feedId;
 
@@ -1597,6 +1701,14 @@ contract DataStreamsFeedTest is Test, FeedConstants, FeedDataFixture {
 
         vm.expectRevert(abi.encodeWithSelector(DataStreamsFeed.InvalidReport.selector));
         feed.verifyAndUpdateReport(unverifiedReport, parameterPayload);
+    }
+
+    function test_verifyAndUpdateReport_revertsWhenObservationsTimestampIsZero_V8() public {
+        describe_verifyAndUpdateReport_observationsTimestampIsZero(8);
+    }
+
+    function test_verifyAndUpdateReport_revertsWhenObservationsTimestampIsZero_V7() public {
+        describe_verifyAndUpdateReport_observationsTimestampIsZero(7);
     }
 
     function test_verifyAndUpdateReport_revertsWhenObservationsTimestampIsZero_V4() public {

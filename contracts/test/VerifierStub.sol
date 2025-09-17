@@ -55,7 +55,13 @@ contract VerifierStub is IVerifierProxy, DataStreamsStructs, FeedDataFixture {
         uint16 version = (uint16(uint8(rawData[0])) << 8) | uint16(uint8(rawData[1]));
 
         // Decode report based on version
-        if (version == 4) {
+        if (version == 8) {
+            ReportV8 memory report = abi.decode(rawData, (ReportV8));
+            return abi.encode(report);
+        } else if (version == 7) {
+            ReportV7 memory report = abi.decode(rawData, (ReportV7));
+            return abi.encode(report);
+        } else if (version == 4) {
             ReportV4 memory report = abi.decode(rawData, (ReportV4));
             return abi.encode(report);
         } else if (version == 3) {
