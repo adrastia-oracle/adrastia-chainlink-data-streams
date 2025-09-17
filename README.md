@@ -6,7 +6,7 @@
 Adrastia Chainlink Data Streams is a set of contracts that allow for easy creation of [Chainlink Data Streams](https://docs.chain.link/data-streams) feed contracts that are compatible with [Adrastia's Chainlink Data Streams Updater](https://docs.adrastia.io/automatos/chainlink-data-streams-feed-updater) service.
 
 > [!WARNING]  
-> These contracts are not audited yet. Use at your own risk.
+> These contracts are not audited, though similar downstream contracts have been audited. Use at your own risk.
 
 ## License
 
