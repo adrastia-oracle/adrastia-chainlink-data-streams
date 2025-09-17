@@ -61,6 +61,9 @@ contract DataStreamsFeed is
     /**
      * @notice The report data structure. This is a truncated version of the full report data to only occupy two storage
      * slots.
+     * @dev This struct uses uint32 for timestamps for gas optimization. This is subject to the
+     * "Year 2106 problem" where the unsigned 32-bit integer will overflow. This is an
+     * accepted trade-off for the intended lifespan of this contract version.
      */
     struct TruncatedReport {
         // SLOT 1
